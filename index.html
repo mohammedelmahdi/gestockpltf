@@ -2,7 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>جملة الأحذية</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
@@ -60,6 +63,165 @@ footer{text-align:center;padding:20px;color:var(--mut);font-size:13px}
 .ov .card.wide{max-width:920px}
 .pos{color:var(--ok)}.neg{color:var(--bad)}
 .tag.confirmed{background:#2a1f4d;color:#b39cff}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS FIXES
+   ============================================================ */
+
+/* --- Global: better touch defaults --- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:hidden}
+button,input,select,textarea{font-size:16px} /* prevents iOS zoom-on-focus */
+img{max-width:100%;height:auto}
+
+/* --- Top bar: wrap gracefully, shrink brand on phones --- */
+@media(max-width:560px){
+  .top{height:auto;min-height:62px;padding:8px 10px;gap:6px;flex-wrap:wrap;padding-top:calc(8px + env(safe-area-inset-top))}
+  .top .ib{width:38px;height:38px;border-radius:10px}
+  .brand{font-size:15px;margin-inline-start:auto;order:-1;width:100%;text-align:start;margin-bottom:4px}
+  .shell{min-height:calc(100vh - 110px)}
+}
+
+/* --- Sidebar on mobile: full-height drawer, safe-area aware --- */
+@media(max-width:900px){
+  aside{
+    position:fixed;
+    top:0;bottom:0;
+    inset-inline-start:0;
+    width:min(280px,85vw);
+    transform:translateX(100%);
+    transition:transform .25s ease;
+    z-index:60;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    padding-bottom:calc(14px + env(safe-area-inset-bottom));
+    overflow-y:auto;
+    box-shadow:-8px 0 24px #0006;
+  }
+  aside.open{transform:none}
+  aside.open::before{
+    content:"";
+    position:fixed;inset:0;
+    background:#000a;
+    z-index:-1;
+  }
+}
+
+/* --- Main content: tighter padding on phones --- */
+@media(max-width:560px){
+  main{padding:10px}
+  .card{padding:12px;border-radius:14px;margin-bottom:10px}
+  .kg{gap:8px}
+  .kc .b{padding:12px;gap:8px}
+  .kc .i{width:40px;height:40px}
+  .kc strong{font-size:18px}
+  .kc small{font-size:12px}
+}
+
+/* --- Forms: stack every .row into 1 column on phones --- */
+@media(max-width:560px){
+  .row{grid-template-columns:1fr;gap:6px}
+  .pb{flex-direction:column;align-items:stretch}
+  .pb select,.pb .btn{width:100%}
+  input,select{padding:11px 12px;font-size:16px}
+  .btn{padding:12px 16px;font-size:15px}
+  .btn.s{padding:8px 12px;font-size:13px}
+}
+
+/* --- Tables: scroll horizontally, prevent squish --- */
+.tw{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  border-radius:12px;
+}
+@media(max-width:700px){
+  .tw table{min-width:560px}
+  th,td{padding:8px 8px;font-size:13px;white-space:normal;word-break:break-word}
+  th{white-space:nowrap}
+  td small{display:inline-block;line-height:1.35}
+}
+
+/* --- Orders table: hide product column on phones --- */
+@media(max-width:700px){
+  .orders-tbl th:nth-child(2),.orders-tbl td:nth-child(2){display:none}
+}
+
+/* --- Store page (public shop) --- */
+@media(max-width:560px){
+  .st{border-radius:0}
+  .an{padding:8px;font-size:12px}
+  .sh{padding:10px 12px;flex-wrap:wrap;gap:8px}
+  .bx{font-size:16px}
+  .bx img{height:30px}
+  .hero{padding:32px 14px}
+  .hero h1{font-size:22px}
+  .hero p{font-size:14px}
+  .pgrid{grid-template-columns:repeat(2,1fr);gap:8px;padding:10px}
+  .pc .pi{padding:8px}
+  .pi b{font-size:13px}
+  .pr{font-size:15px}
+  .pc .btn{padding:10px 8px;font-size:13px}
+  .wa{inset-inline-start:12px;bottom:12px;padding:10px 14px;font-size:13px}
+  .ct{inset-inline-end:12px;bottom:12px;padding:12px 16px}
+  footer{font-size:12px;padding:14px}
+}
+
+/* --- Modal (openP, openCart, editOrder, popups) --- */
+@media(max-width:560px){
+  .ov{padding:0;align-items:flex-end}
+  .ov .card{
+    max-height:92vh;
+    border-radius:18px 18px 0 0;
+    width:100%;max-width:100%;
+    padding:16px;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));
+    animation:slideUp .25s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(20px);opacity:.6}to{transform:none;opacity:1}}
+  .pm .mi{max-height:40vh}
+  .th img{width:48px;height:48px}
+  .cl{gap:8px}
+  .cl img{width:48px;height:48px}
+  .qs button{width:36px;height:36px;font-size:20px}
+}
+
+/* --- Admin product form (Stock tab): single column on phones --- */
+@media(max-width:560px){
+  .pg{grid-template-columns:1fr}
+  .ims{gap:6px}
+  .th1,.th1 img{width:72px}
+  .th1 img{height:72px}
+  .dz{padding:12px;font-size:13px}
+}
+
+/* --- Login page --- */
+@media(max-width:560px){
+  .login{margin:6vh auto;padding:18px}
+  .login h2{font-size:20px}
+}
+
+/* --- Toast & loader safe area --- */
+#toast{
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  inset-inline:12px;
+  font-size:14px;
+}
+#ld.soft{inset:calc(70px + env(safe-area-inset-top)) 0 auto 0}
+
+/* --- Small screens: reduce heading sizes --- */
+@media(max-width:560px){
+  h2{font-size:19px}
+  h3{font-size:16px}
+  .card h3{margin-bottom:8px}
+}
+
+/* --- Admin dashboard: KPI cards 1-per-row on very small phones --- */
+@media(max-width:420px){
+  .kg{grid-template-columns:1fr}
+  .pgrid{grid-template-columns:1fr}
+}
+
+/* --- Prevent long unbroken strings from overflowing --- */
+td,th,small,p,b,strong{overflow-wrap:anywhere;word-break:break-word}
 </style>
 </head>
 <body>
@@ -252,7 +414,7 @@ setInterval(poll, 20000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 function paint() {
   app.innerHTML = `<div class="top"><button class="ib mb" onclick="$('aside').classList.toggle('open')">${ic('menu')}</button>${S.slug ? `<button class="ib on" onclick="window.open('?s=${S.slug}')">${ic('eye')}</button>` : ''}<button class="ib" onclick="theme()">${ic('moon')}</button><button class="ib" onclick="dash()">${ic('refresh')}</button><button class="ib" onclick="logout()">${ic('logout')}</button><span class="brand">${esc(S.name)}</span></div>
-  <div class="shell"><aside>${TABS[S.role].map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="tab='${t[0]}';paint()">${t[1]}</button>`).join('')}</aside><main>${V[tab]()}</main></div>`;
+  <div class="shell"><aside>${TABS[S.role].map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="tab='${t[0]}';document.querySelector('aside').classList.remove('open');paint()">${t[1]}</button>`).join('')}</aside><main>${V[tab]()}</main></div>`;
 }
 const sname = id => (D.sellers || []).find(s => s.id === id)?.name || '';
 const pname = id => D.products.find(p => p.id === id)?.name || '';
@@ -334,7 +496,7 @@ const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) 
 const ordersTable = () => {
   const can = S.role !== 'seller', rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase())));
   return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select></div>
-  <div class="card tw"><table><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
+  <div class="card tw"><table class="orders-tbl"><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
   ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
   <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}</td>
   <td>${num(o.price * o.qty + +(o.fee || 0))}<br><small class="mut">منها توصيل ${num(o.fee)}</small></td>
