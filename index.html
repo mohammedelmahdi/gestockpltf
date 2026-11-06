@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جملة الأحذية</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b1220;--card:#141c2b;--card2:#1a2437;--line:#24304a;--ink:#e9eef6;--mut:#8b98ad;--acc:#f59e0b;--accd:#3a2e17;--ok:#34d399;--bad:#f87171;color-scheme:dark}
+[data-theme=light]{--bg:#f1f4f8;--card:#fff;--card2:#f4f6fa;--line:#dde3ec;--ink:#14233b;--mut:#5d6b80;--accd:#fdefd2;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Tajawal,Tahoma,sans-serif}
+.top{position:sticky;top:0;z-index:40;height:62px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 14px}
+.ib{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.ib.on{background:var(--acc);border-color:var(--acc);color:#1a1200}.brand{margin-inline-start:auto;font-weight:800;font-size:18px;color:var(--acc)}
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:calc(100vh - 62px)}
+aside{background:var(--card);border-inline-end:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:6px}
+aside button{border:0;background:none;color:var(--mut);font:inherit;text-align:start;padding:11px 14px;border-radius:12px;cursor:pointer}
+aside button.on{background:var(--accd);color:var(--acc);font-weight:700}
+main{padding:16px;max-width:1100px;width:100%;margin:0 auto}.mb{display:none}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.mb{display:grid}aside{position:fixed;top:62px;bottom:0;inset-inline-start:0;width:250px;transform:translateX(100%);transition:.2s;z-index:30}aside.open{transform:none}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+.kg{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}
+@media(min-width:700px){.kg{grid-template-columns:repeat(3,1fr)}}@media(min-width:1000px){.kg{grid-template-columns:repeat(4,1fr)}}
+.kc{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.kc .b{display:flex;align-items:center;gap:10px;padding:14px}.kc .t{flex:1;text-align:left;min-width:0}.kc small{color:var(--mut);display:block}.kc strong{font-size:22px;line-height:1.3}
+.kc .i{width:48px;height:48px;border-radius:12px;background:var(--accd);color:var(--acc);display:grid;place-items:center;flex:none}
+.kc .f{background:var(--card2);padding:8px 14px;font-size:13px;color:var(--mut);border-top:1px solid var(--line)}.up{color:var(--ok)}.dn{color:var(--bad)}
+.pb{display:flex;gap:8px;align-items:center}.pb select{flex:1}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}th{color:var(--mut);font-weight:700}.tw{overflow-x:auto}
+input,select{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card2);color:var(--ink);width:100%}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px}
+.btn{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer}
+.btn.t{background:var(--acc);color:#1a1200;border-color:var(--acc)}.btn.s{padding:4px 10px;font-size:13px;border-radius:8px}
+.tag{padding:2px 8px;border-radius:99px;font-size:12px;font-weight:700;background:var(--line)}
+.tag.new{background:var(--accd);color:var(--acc)}.tag.shipped{background:#16294a;color:#7ab0ff}.tag.delivered{background:#12372b;color:var(--ok)}.tag.returned{background:#3d1d1d;color:var(--bad)}
+#toast{position:fixed;bottom:16px;inset-inline:16px;max-width:420px;margin:auto;background:var(--acc);color:#1a1200;font-weight:700;padding:10px 14px;border-radius:12px;display:none;z-index:99}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}.pg .card{margin:0}
+.pim{display:flex;gap:6px;margin-bottom:8px}.pim img{width:calc(50% - 3px);aspect-ratio:1;object-fit:cover;border-radius:12px;background:var(--card2)}
+.login{max-width:340px;margin:12vh auto}.shop{max-width:560px;margin:0 auto;padding:14px}.mut{color:var(--mut)}h2,h3{margin:0 0 10px}
+
+.tag.pending{background:#3b2a0a;color:#fbbf24}.tag.cancelled{background:var(--line);color:var(--mut)}
+.ov{position:fixed;inset:0;background:#000b;z-index:90;display:grid;place-items:center;padding:14px}.ov .card{max-width:560px;width:100%;max-height:92vh;overflow:auto;margin:0}
+.ims{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.th1{position:relative;width:88px}.th1 img{width:88px;height:88px;object-fit:cover;border-radius:10px}
+.th1 button{position:absolute;top:3px;inset-inline-end:3px;border:0;border-radius:6px;background:#000a;color:#fff;cursor:pointer}.th1 .cv{inset-inline-end:auto;inset-inline-start:3px;top:auto;bottom:3px;font-size:11px}.th1 em{font-size:11px;color:var(--acc)}
+.dz{display:block;border:2px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--mut);cursor:pointer;margin-bottom:8px}
+.st{max-width:1000px;margin:0 auto;background:var(--card)}.an{background:var(--acc);color:#1a1200;text-align:center;padding:6px;font-weight:700;font-size:13px}
+.sh{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}.bx{display:flex;align-items:center;gap:8px;font-size:18px}.bx img{height:36px;border-radius:8px}
+.hero{background:linear-gradient(135deg,var(--acc),#1a1200) center/cover;color:#fff;text-align:center;padding:48px 16px}.hero h1{margin:0 0 6px;font-size:28px}.hero p{margin:0}
+.pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px}@media(min-width:760px){.pgrid{grid-template-columns:repeat(4,1fr)}}
+.pc{border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;background:var(--card)}.pc>img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--card2)}
+.pi{padding:10px;display:flex;flex-direction:column;gap:4px}.pr{font-weight:800;font-size:17px;color:var(--acc)}.pi .btn{width:100%;margin-top:4px}
+.pm .mi{width:100%;max-height:340px;object-fit:contain;border-radius:12px;background:var(--card2)}.th{display:flex;gap:6px;margin:8px 0}.th img{width:56px;height:56px;object-fit:cover;border-radius:8px;cursor:pointer}
+.wa{position:fixed;bottom:18px;inset-inline-start:18px;background:#25d366;color:#fff;padding:12px 18px;border-radius:99px;font-weight:800;text-decoration:none;z-index:50}
+footer{text-align:center;padding:20px;color:var(--mut);font-size:13px}
+.ct{position:fixed;bottom:18px;inset-inline-end:18px;background:var(--acc);color:#1a1200;border:0;border-radius:99px;padding:12px 18px;font:inherit;font-weight:800;cursor:pointer;z-index:50;box-shadow:0 4px 14px #0004}
+.cl{display:flex;gap:10px;align-items:center;margin:8px 0}.cl img{width:56px;height:56px;object-fit:cover;border-radius:8px}.qs{display:flex;gap:8px;align-items:center}.qs button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--ink);cursor:pointer;font-size:18px}
+#ld{display:none;position:fixed;inset:0;z-index:200;place-items:center;background:#0008}#ld.hard{display:grid}#ld.soft{display:grid;inset:70px 0 auto 0;background:none;pointer-events:none}
+.lb{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:10px 18px;display:flex;gap:10px;align-items:center;font-weight:700;box-shadow:0 4px 14px #0005}
+.sp{width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:rot .8s linear infinite}@keyframes rot{to{transform:rotate(360deg)}}
+.ov .card.wide{max-width:920px}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.tag.confirmed{background:#2a1f4d;color:#b39cff}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="toast"></div><div id="ld"><div class="lb"><span class="sp"></span><b>جاري المعالجة…</b></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="config.js"></script>
+<script>
+const API_URL = window.API_URL || ''; // من config.js
+const $ = s => document.querySelector(s), app = $('#app');
+const ST = {new:'جديد (بانتظار تأكيد البائع)', confirmed:'مؤكد — جاهز للتحضير', shipped:'تبعث', delivered:'تسلّم', returned:'رجع', pending:'في Noest (غير مؤكد)', cancelled:'ملغى'};
+const W = "Adrar,Chlef,Laghouat,Oum El Bouaghi,Batna,Béjaïa,Biskra,Béchar,Blida,Bouira,Tamanrasset,Tébessa,Tlemcen,Tiaret,Tizi Ouzou,Alger,Djelfa,Jijel,Sétif,Saïda,Skikda,Sidi Bel Abbès,Annaba,Guelma,Constantine,Médéa,Mostaganem,M'Sila,Mascara,Ouargla,Oran,El Bayadh,Illizi,Bordj Bou Arréridj,Boumerdès,El Tarf,Tindouf,Tissemsilt,El Oued,Khenchela,Souk Ahras,Tipaza,Mila,Aïn Defla,Naâma,Aïn Témouchent,Ghardaïa,Relizane,Timimoun,Bordj Badji Mokhtar,Ouled Djellal,Béni Abbès,In Salah,In Guezzam,Touggourt,Djanet,El M'Ghair,El Meniaa".split(',');
+const wOpts = () => '<option value="">الولاية</option>' + W.map((n, i) => `<option value="${i + 1}">${i + 1} - ${n}</option>`).join('');
+let I = [];
+let CART = [];
+const saveCart = () => { try { localStorage['cart_' + slug] = JSON.stringify(CART); } catch (e) {} };
+const cartBadge = () => { const b = $('#cb'); if (b) b.textContent = CART.reduce((s, l) => s + l.qty, 0); };
+async function upd() {
+  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), parcels = Math.ceil(CART.reduce((s, l) => s + l.qty, 0) / 2);
+  const fee = val('w') ? (await api('quote', {slug, wilaya: val('w'), stopDesk: val('dm')})).fee : 0;
+  $('#tot').innerHTML = `المنتجات: ${num(sub)} دج<br>التوصيل (${parcels} طرد × ${num(fee)}): ${val('w') ? num(fee * parcels) + ' دج' : 'اختار الولاية'}<br><b>المجموع عند الاستلام: ${num(sub + fee * parcels)} دج</b>`;
+}
+let GS = '';
+const imL = p => { try { return JSON.parse(p.images || '[]'); } catch (e) { return []; } };
+async function geo(w, c, d, s) {
+  if (slug) upd();
+  const cs = $('#' + c), ss = $('#' + s), sd = val(d) === '1';
+  cs.innerHTML = '<option value="">البلدية</option>'; ss.innerHTML = '<option value="">المكتب</option>';
+  cs.style.display = sd ? 'none' : ''; ss.style.display = sd ? '' : 'none';
+  if (!val(w)) return;
+  const x = {slug: GS || slug || S.slug, wilaya: val(w)};
+  if (sd) { const r = await api('stations', x); ss.innerHTML += r.list.map(n => `<option value="${esc(n.code)}">${esc(n.name)} — ${esc(n.address)}</option>`).join(''); }
+  else { const r = await api('communes', x); cs.innerHTML += r.list.map(n => `<option>${esc(n)}</option>`).join(''); }
+}
+function cp(id) {
+  const a = +val('a' + id), w = +val('w' + id), b = +val('b' + id), m = Math.round(a * (w - b) * 100) / 100;
+  $('#cp' + id).textContent = num(Math.round(a * w * 100) / 100); $('#mg' + id).textContent = b ? num(m) : '—'; $('#mg' + id).className = pn(b ? m : 0);
+}
+function saveP(id) {
+  const g = k => val(k + id);
+  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: Math.round(g('a') * g('w') * 100) / 100, buy: Math.round(g('a') * g('b') * 100) / 100, stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u});
+}
+const imHtml = (id, a) => a.map((u, i) => `<div class="th1"><img src="${esc(u)}"><button onclick="rmIm('${id}',${i})">✕</button>${i ? `<button class="cv" onclick="coverIm('${id}',${i})">★ غلاف</button>` : '<em>الغلاف</em>'}</div>`).join('');
+const imSet = (id, f) => { const el = $('#im' + id), a = JSON.parse(el.dataset.u || '[]'); f(a); el.dataset.u = JSON.stringify(a); el.innerHTML = imHtml(id, a); };
+const rmIm = (id, i) => imSet(id, a => a.splice(i, 1));
+const coverIm = (id, i) => imSet(id, a => a.unshift(a.splice(i, 1)[0]));
+async function upl(f) {
+  const im = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = URL.createObjectURL(f); });
+  const c = document.createElement('canvas'), k = Math.min(1, 900 / Math.max(im.width, im.height)); c.width = im.width * k; c.height = im.height * k;
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+  return (await api('uploadImg', {data: c.toDataURL('image/jpeg', 0.82).split(',')[1]})).url;
+}
+async function pick(inp, id) {
+  toast('كنرفع الصور…');
+  for (const f of inp.files) { if (JSON.parse($('#im' + id).dataset.u || '[]').length >= 5) break; const u = await upl(f); imSet(id, a => a.push(u)); }
+  toast('تم ✔ — ما تنساش تضغط حفظ');
+}
+function scanBox() {
+  return `<div class="card"><h3>سكان بوردرو المرتجع</h3><div class="row"><input id="sc" placeholder="امسح الباركود ولا اكتب رقم التتبع" onkeydown="if(event.key==='Enter')scan()"><button class="btn t" onclick="scan()">استقبال</button><button class="btn" onclick="camScan()">كاميرا</button></div><div id="cam"></div></div>`;
+}
+async function scan() {
+  const code = val('sc').trim(); if (!code) return;
+  const r = await api('scanReturn', {code}); await dash();
+  popup('رجع للمخزون ✔', `كرطون البائع <b>${esc(r.seller)}</b><br>${esc(r.items)}<br>تم إنقاص <b>${num(r.value)} دج</b> من دينو عند المورد.`); setTimeout(() => $('#sc') && $('#sc').focus(), 50);
+}
+async function camScan() {
+  if (!('BarcodeDetector' in window)) return toast('هذا المتصفح ما يدعمش سكان الكاميرا، استعمل قارئ باركود ولا اكتب الرقم');
+  const v = document.createElement('video'); v.setAttribute('playsinline', ''); v.style.cssText = 'width:100%;border-radius:8px'; $('#cam').appendChild(v);
+  const st = await navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}); v.srcObject = st; await v.play();
+  const bd = new BarcodeDetector();
+  (async function loop() {
+    const r = await bd.detect(v).catch(() => []);
+    if (r.length) { st.getTracks().forEach(t => t.stop()); v.remove(); $('#sc').value = r[0].rawValue; scan(); }
+    else if (v.isConnected) requestAnimationFrame(loop);
+  })();
+}
+async function label(id) {
+  const r = await api('label', {orderId: id}), o = D.orders.find(x => x.id === id);
+  let out = Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0));
+  if (+o.qty > 1 && window.PDFLib) {                       // نسخة لكل كرطون + ترقيم 1/2 و 2/2
+    const {PDFDocument, StandardFonts} = PDFLib, src = await PDFDocument.load(out), doc = await PDFDocument.create(), f = await doc.embedFont(StandardFonts.HelveticaBold);
+    for (let i = 1; i <= +o.qty; i++) { const [pg] = await doc.copyPages(src, [0]); doc.addPage(pg); pg.drawText(i + '/' + o.qty, {x: 8, y: pg.getHeight() - 22, size: 16, font: f}); }
+    out = await doc.save();
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], {type: 'application/pdf'})); a.download = r.name; a.click();
+}
+let S = JSON.parse(sessionStorage.me || 'null'), D = {}, tab = '';
+
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500)}
+const BZ = [0, 0];
+function busy(k, d) { BZ[k] += d; const l = $('#ld'); if (l) l.className = BZ[1] > 0 ? 'hard' : BZ[0] > 0 ? 'soft' : ''; }
+const SOFT = ['communes', 'stations', 'quote', 'fees', 'store', 'data', 'track', 'login'];
+async function api(a, x = {}, quiet) {                 // مؤشر تحميل: خفيف للقراءة، وحاجب للعمليات (باش ما يتضغطش زر مرتين)
+  const k = SOFT.includes(a) ? 0 : 1; if (!quiet) busy(k, 1);
+  try { return await api0(a, x, quiet); } finally { if (!quiet) busy(k, -1); }
+}
+async function api0(a, x = {}, quiet) {
+  const body = {a, ...x}; if (S) { body.u = S.id; body.p = S.p; }
+  const r = await fetch(API_URL, {method:'POST', body: JSON.stringify(body)}); // بلا headers لتفادي CORS preflight
+  const j = await r.json(); if (j.error) { if (!quiet) toast(j.error); throw new Error(j.error); } return j;
+}
+const num = n => Number(n || 0).toLocaleString('fr-DZ');
+const fd = d => new Date(d).toLocaleDateString('fr-DZ');
+const val = id => $('#' + id).value;
+const IC = {menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',moon:'<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>',refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',logout:'<path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/>',cart:'<path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L20 8H6"/><circle cx="9" cy="19" r="1.2"/><circle cx="17" cy="19" r="1.2"/>',check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',cash:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',trend:'<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/>',filter:'<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const ic = n => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]}</svg>`;
+try { document.documentElement.dataset.theme = localStorage.t || 'dark'; } catch (e) {}
+function theme() { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; document.documentElement.dataset.theme = t; try { localStorage.t = t; } catch (e) {} }
+const imgTag = u => u ? `<img src="${String(u).replace(/"/g, '')}" loading="lazy">` : '';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- المتجر العام ---------- */
+const slug = (location.pathname.match(/\/s\/([^\/]+)/) || [])[1] || new URLSearchParams(location.search).get('s');
+if (slug) store(); else if (!S) login(); else dash();
+
+async function store() {
+  document.documentElement.dataset.theme = 'light'; app.innerHTML = '<p style="padding:30px">…</p>';
+  const d = await api('store', {slug}); I = d.items; document.title = d.shop;
+  try { CART = JSON.parse(localStorage['cart_' + slug] || '[]'); } catch (e) { CART = []; }
+  if (d.color) document.documentElement.style.setProperty('--acc', d.color);
+  app.innerHTML = `<div class="st"><div class="an">🚚 توصيل لـ 58 ولاية — الدفع عند الاستلام</div>
+  <header class="sh"><div class="bx">${d.logo ? `<img src="${esc(d.logo)}">` : ''}<b>${esc(d.shop)}</b></div><button class="btn s" onclick="trackBox()">تتبع طلبك</button></header>
+  <div class="hero" ${d.banner ? `style="background-image:linear-gradient(#0006,#0006),url('${esc(d.banner)}')"` : ''}><h1>${esc(d.shop)}</h1><p>أحذية بالجملة — اطلب بالكرطون</p></div>
+  <div class="pgrid">${I.map(p => `<div class="pc" onclick="openP('${p.id}')"><img src="${esc(imL(p)[0] || '')}"><div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div><button class="btn t">اطلب الآن</button></div></div>`).join('') || '<p>قريبا…</p>'}</div>
+  ${d.wa ? `<a class="wa" href="https://wa.me/${esc(d.wa)}" target="_blank">واتساب</a>` : ''}<footer>© ${esc(d.shop)}</footer></div><button class="ct" onclick="openCart()">🛒 <span id="cb">0</span></button><div id="mo"></div>`;
+  cartBadge();
+}
+function openP(id) {
+  const p = I.find(x => x.id === id), ims = imL(p);
+  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button>
+  <img id="mi" class="mi" src="${esc(ims[0] || '')}"><div class="th">${ims.map(u => `<img src="${esc(u)}" onclick="$('#mi').src=this.src">`).join('')}</div>
+  <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
+  <p class="mut">كل كرطونين (من نفس المنتج أو منتجين مختلفين) = طرد توصيل واحد.</p>
+  <div class="row"><input id="q" type="number" min="1" max="${p.stock}" value="1" placeholder="عدد الكراطن"></div>
+  <button class="btn t" style="width:100%" onclick="addCart('${p.id}')">🛒 أضف للسلة</button></div></div>`;
+}
+function addCart(id) {
+  const p = I.find(x => x.id === id), q = Math.max(1, +val('q') || 1), l = CART.find(x => x.id === id), t = Math.min(p.stock, (l ? l.qty : 0) + q);
+  if (l) { l.qty = t; l.stock = p.stock; } else CART.push({id, name: p.name, price: p.price, img: imL(p)[0] || '', qty: t, stock: p.stock});
+  saveCart(); cartBadge(); $('#mo').innerHTML = ''; toast('أضيف للسلة ✔');
+}
+const cartLines = () => CART.map((l, i) => `<div class="cl"><img src="${esc(l.img)}"><div style="flex:1"><b>${esc(l.name)}</b><br><small class="mut">${num(l.price)} دج / كرطون</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`).join('') || '<p class="mut">السلة فارغة.</p>';
+function cartQty(i, d) {
+  const l = CART[i]; l.qty += d;
+  if (l.qty < 1) CART.splice(i, 1); else if (l.qty > l.stock) { l.qty = l.stock; toast('الستوك المتوفر: ' + l.stock); }
+  saveCart(); cartBadge(); if (CART.length) { $('#cl').innerHTML = cartLines(); upd(); } else openCart();
+}
+function openCart() {
+  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">كل كرطونين = طرد واحد، والتوصيل يتحسب على كل طرد.</p>
+  ${CART.length ? `<div class="row"><input id="c" placeholder="الاسم الكامل"><input id="ph" type="tel" placeholder="الهاتف"></div>
+  <div class="row"><select id="dm" onchange="geo('w','cm','dm','st')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="w" onchange="geo('w','cm','dm','st')">${wOpts()}</select></div>
+  <div class="row"><select id="cm"><option value="">البلدية</option></select><select id="st" style="display:none"><option value="">المكتب</option></select><input id="ad" placeholder="العنوان"></div>
+  <p id="tot" class="mut"></p><button class="btn t" style="width:100%" onclick="sendOrder()">تأكيد الطلب — الدفع عند الاستلام</button>` : ''}</div></div>`;
+  if (CART.length) upd();
+}
+async function sendOrder() {
+  if (!CART.length) return toast('السلة فارغة');
+  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), customer: val('c'), phone: val('ph'), wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
+  CART = []; saveCart(); cartBadge();
+  $('#mo .card').innerHTML = `<h2>تم تسجيل طلبك ✔</h2><p>رقم الطلب: <b>${r.id}</b><br>عدد الطرود: ${r.parcels} — رسوم التوصيل: ${num(r.fee)} دج<br>نتصلو بيك للتأكيد.</p>`;
+}
+function trackBox() { const id = prompt('رقم الطلب'), ph = id && prompt('رقم الهاتف'); if (ph) api('track', {id, phone: ph}).then(r => alert(r.list.map(x => x.id + ': ' + (ST[x.status] || x.status) + (x.last ? ' — ' + x.last : '')).join('\n'))); }
+
+/* ---------- الدخول ---------- */
+function login() {
+  app.innerHTML = `<div class="login card"><h2>دخول</h2><div class="row"><input id="lu" placeholder="المعرّف (id)"></div><div class="row"><input id="lp" type="password" placeholder="كلمة السر"></div><button class="btn" onclick="doLogin()">دخول</button></div>`;
+}
+async function doLogin() {
+  S = {id: val('lu').trim(), p: val('lp')};
+  try { const r = await api('login'); S = {...r, p: S.p}; sessionStorage.me = JSON.stringify(S); dash(); } catch { S = null; }
+}
+function logout() { sessionStorage.clear(); S = null; login(); }
+
+/* ---------- لوحة التحكم ---------- */
+const TABS = {
+  seller: [['orders','طلباتي'],['stats','إحصائيات'],['account','حسابي مع المورد'],['exp','مصاريف'],['stock','المخزون والأسعار'],['mystore','متجري'],['fees','أسعار النقل'],['noest','Noest']],
+  warehouse: [['orders','الطلبات'],['ret','المرتجعات']],
+  admin: [['orders','الطلبات'],['sellers','تتبع البائعين'],['ret','المرتجعات'],['stock','المنتجات والمخزون'],['users','المستخدمون']]
+};
+async function dash() {
+  D = await api('data'); tab = tab && TABS[S.role].some(t => t[0] === tab) ? tab : TABS[S.role][0][0]; LAST = JSON.stringify(D); paint();
+}
+let LAST = '';
+async function poll(force) {                 // تحديث تلقائي كل 20 ثانية (ما يقطعش عليك كي تكتب ولا كي تكون نافذة مفتوحة)
+  if (!S || slug || document.hidden) return;
+  const a = document.activeElement, typing = a && /INPUT|SELECT|TEXTAREA/.test(a.tagName), modal = $('#mo') && $('#mo').innerHTML.trim();
+  if (!force && (typing || modal)) return;
+  try { const d = await api('data', {}, true), s = JSON.stringify(d); if (s !== LAST) { LAST = s; D = d; paint(); } } catch (e) {}
+}
+setInterval(poll, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+function paint() {
+  app.innerHTML = `<div class="top"><button class="ib mb" onclick="$('aside').classList.toggle('open')">${ic('menu')}</button>${S.slug ? `<button class="ib on" onclick="window.open('?s=${S.slug}')">${ic('eye')}</button>` : ''}<button class="ib" onclick="theme()">${ic('moon')}</button><button class="ib" onclick="dash()">${ic('refresh')}</button><button class="ib" onclick="logout()">${ic('logout')}</button><span class="brand">${esc(S.name)}</span></div>
+  <div class="shell"><aside>${TABS[S.role].map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="tab='${t[0]}';paint()">${t[1]}</button>`).join('')}</aside><main>${V[tab]()}</main></div>`;
+}
+const sname = id => (D.sellers || []).find(s => s.id === id)?.name || '';
+const pname = id => D.products.find(p => p.id === id)?.name || '';
+async function act(a, x) { await api(a, x); await dash(); }
+
+const pn = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';   // أخضر فوق الصفر، أحمر تحت الصفر
+const SUB_FEE = 2000; // اشتراك الاسترجاع الشهري
+function stats(os, ex, rt, plan) {
+  const sent = os.filter(o => ['shipped', 'delivered', 'returned'].includes(o.status));
+  const rec = new Set(rt.filter(r => r.received === 'yes').map(r => r.orderId)), back = sent.filter(o => rec.has(o.id));
+  const v = a => a.reduce((s, o) => s + o.price * o.qty, 0), c = a => a.reduce((s, o) => s + o.wholesale * o.qty, 0);
+  const ret = os.filter(o => o.status === 'returned'), dN = os.filter(o => o.status === 'delivered').length;
+  const months = new Set(sent.map(o => new Date(o.date).toISOString().slice(0, 7))).size;
+  const rf = plan === 'sub' ? months * SUB_FEE : ret.reduce((s, o) => s + +(o.retFee || 0), 0);
+  const sales = v(sent) - v(back), cost = c(sent) - c(back), exp = ex.reduce((s, e) => s + +e.amount, 0), op = os.filter(o => ['new', 'confirmed', 'pending'].includes(o.status));
+  return {n: new Set(os.map(o => o.group || o.id)).size, wait: os.filter(o => ['new', 'confirmed', 'pending', 'shipped'].includes(o.status)).length, sent: v(sent), back: v(back), sales, cost, exp, rf,
+    profit: sales - cost - exp - rf, open: v(op), eprofit: sales - cost - exp - rf + v(op) - c(op), dN, rN: ret.length, rr: dN + ret.length ? Math.round(ret.length / (dN + ret.length) * 100) : 0};
+}
+let P = 'all', PC = null;
+const PL = {all: 'الكل', today: 'اليوم', 7: 'آخر 7 أيام', 30: 'آخر 30 يوم'};
+const planOf = sid => D.users ? (D.users.find(u => u.id === sid) || {}).plan : D.plan;
+const periodBar = () => `<div class="card pb"><select onchange="P=this.value;paint()">${Object.keys(PL).map(k => `<option value="${k}" ${P === k ? 'selected' : ''}>${PL[k]}</option>`).join('')}${P === 'c' ? '<option value="c" selected>مخصص</option>' : ''}</select><button class="btn" onclick="custom()">مخصص</button></div>`;
+function custom() { const a = prompt('من (YYYY-MM-DD)'), b = prompt('إلى (YYYY-MM-DD)'); if (a && b) { PC = [+new Date(a), +new Date(b) + 864e5]; P = 'c'; paint(); } }
+function rng() {
+  const n = Date.now(), d = 864e5;
+  if (P === 'today') { const s = new Date(); s.setHours(0, 0, 0, 0); return [+s, n + 1]; }
+  if (P === '7') return [n - 7 * d, n + 1]; if (P === '30') return [n - 30 * d, n + 1];
+  return P === 'c' ? PC : null;
+}
+function sel(ids, a) {
+  const o = {}, w = r => a ? r.filter(x => { const t = +new Date(x.date); return t >= a[0] && t < a[1]; }) : r;
+  ids.forEach(id => { const x = stats(w(D.orders.filter(r => r.seller === id)), w(D.expenses.filter(r => r.seller === id)), w(D.returns.filter(r => r.seller === id)), planOf(id)); Object.keys(x).forEach(k => o[k] = (o[k] || 0) + x[k]); });
+  o.rr = o.dN + o.rN ? Math.round(o.rN / (o.dN + o.rN) * 100) : 0; return o;
+}
+const KD = [['الطلبات','n','cart'],['تم التسليم','dN','check'],['قيمة المرسل','sent','box',1],['معاد للمخزن','back','undo',1],['الإيرادات','sales','cash',1],['تكلفة الجملة','cost','wallet',1],['المصاريف','exp','wallet',1],['حقوق الاسترجاع','rf','undo',1],['الأرباح','profit','trend',1],['قيد المعالجة','open','clock',1],['الربح المتوقع','eprofit','trend',1],['نسبة الإرجاع','rr','filter'],['في الانتظار','wait','clock']];
+const pct = (c, p) => p === null ? 0 : (!p ? (c ? 100 : 0) : Math.round((c - p) / Math.abs(p) * 100));
+const kpis = (c, p) => `<div class="kg">${KD.map(([l, k, i, m]) => { const d = pct(c[k], p ? p[k] : null); return `<div class="kc"><div class="b"><span class="i">${ic(i)}</span><div class="t"><small>${l}</small><strong class="${['profit', 'eprofit'].includes(k) ? pn(c[k]) : ''}">${num(c[k])}${m ? ' دج' : k === 'rr' ? '%' : ''}</strong></div></div><div class="f">${d > 0 ? `<span class="up">${d}% ↑</span>` : d < 0 ? `<span class="dn">${-d}% ↓</span>` : '0%'}</div></div>`; }).join('')}</div>`;
+const view = ids => { const a = rng(); return periodBar() + kpis(sel(ids, a), a ? sel(ids, [a[0] - (a[1] - a[0]), a[0]]) : null); };
+
+const modal = (html, wide) => { $('#mo') || app.insertAdjacentHTML('beforeend', '<div id="mo"></div>'); $('#mo').innerHTML = html ? `<div class="ov"><div class="card${wide ? ' wide' : ''}">${html}</div></div>` : ''; };
+function popup(title, text, ok = true) {
+  modal(`<div style="text-align:center"><div style="font-size:46px">${ok ? '✅' : '⚠️'}</div><h3>${title}</h3><p class="mut">${text}</p><button class="btn t" onclick="modal()">تم</button></div>`);
+  clearTimeout(popup.t); popup.t = setTimeout(() => modal(), 7000);
+}
+async function showLog(g) {
+  const r = await api('orderLog', {group: g});
+  modal(`<button class="btn s" onclick="modal()">✕ إغلاق</button><h3>سجل الطلب ${esc(g)}</h3><div class="tw"><table><tr><th>التاريخ</th><th>الطرد</th><th>من</th><th>العملية</th><th>تفاصيل</th></tr>${r.list.map(l => `<tr><td>${new Date(l.date).toLocaleString('fr-DZ')}</td><td>${esc(l.orderId)}</td><td>${esc(l.by)}</td><td>${esc(l.action)}</td><td class="mut">${esc(l.detail)}</td></tr>`).join('') || '<tr><td colspan=5 class="mut">ما كاين سجل.</td></tr>'}</table></div>`, true);
+}
+async function shipG(g) { const r = await api('shipGroup', {group: g}); await dash(); popup('تم الإرسال لـ Noest', `${r.n} طرد تبعثو <b>غير مؤكدين</b> — أكّدهم من تطبيق Noest بعد المراجعة.`); }
+
+const pfOf = o => (o.wholesale - (o.buy === undefined || o.buy === '' || o.buy === null ? o.wholesale : o.buy)) * o.qty;
+const kcards = C => `<div class="kg">${C.map(c => `<div class="kc"><div class="b"><span class="i">${ic(c[2])}</span><div class="t"><small>${c[0]}</small><strong class="${c[4] !== undefined ? pn(c[4]) : ''}">${c[1]}</strong></div></div><div class="f">${c[3] || '&nbsp;'}</div></div>`).join('')}</div>`;
+/* ---- حساب البائع مع المورد: الدين = بضاعة مأخوذة (بسعر الجملة) − مرتجع مُستلم − دفعات ---- */
+function ledger(sid) {
+  const os = D.orders.filter(o => o.seller === sid && o.status !== 'cancelled'), L = [];   // البضاعة تتحسب على البائع من لحظة تسجيل الطلب
+  os.forEach(o => L.push({d: o.date, t: 'بضاعة', txt: o.id + ' — ' + itemsTxt(o).replace(/<br>/g, '، '), amt: o.wholesale * o.qty, q: +o.qty, pf: pfOf(o)}));
+  D.returns.filter(r => r.seller === sid && r.received === 'yes').forEach(r => { const o = D.orders.find(x => x.id === r.orderId); if (o) L.push({d: r.date, t: 'مرتجع', txt: o.id + ' — ' + itemsTxt(o).replace(/<br>/g, '، '), amt: -(o.wholesale * o.qty), q: -o.qty, pf: -pfOf(o)}); });
+  (D.payments || []).filter(p => p.seller === sid).forEach(p => L.push({d: p.date, t: 'دفعة', txt: esc(p.note || ''), amt: -p.amount, id: p.id}));
+  L.sort((a, b) => new Date(a.d) - new Date(b.d));
+  let bal = 0; L.forEach(l => { bal += l.amt; l.bal = bal; });
+  const sum = t => L.filter(l => l.t === t).reduce((s, l) => s + l.amt, 0), qs = t => L.filter(l => l.t === t).reduce((s, l) => s + (l.q || 0), 0);
+  return {L, profit: L.reduce((s, l) => s + (l.pf || 0), 0), taken: sum('بضاعة'), takenQ: qs('بضاعة'), back: -sum('مرتجع'), backQ: -qs('مرتجع'), paid: -sum('دفعة'), debt: bal};
+}
+const acctView = (sid, adm) => {
+  const l = ledger(sid), rr = sel([sid], null).rr;
+  const C = [['بضاعة مأخوذة', num(l.taken) + ' دج', 'box', l.takenQ + ' كرطون'], ['مرتجع مُستلم', num(l.back) + ' دج', 'undo', l.backQ + ' كرطون (منقوص من الدين)'], ['دفعات وتسبيقات', num(l.paid) + ' دج', 'cash', ''],
+    ['الدين الحالي', num(l.debt) + ' دج', 'wallet', l.debt > 0 ? 'عليه للمورد' : l.debt < 0 ? 'فائض له عند المورد' : 'مسدّد ✔'], ['نسبة الإرجاع', rr + '%', 'filter', 'طرود راجعة من (مسلّمة + راجعة)']];
+  if (adm) C.push(['ربحك من هذا البائع', num(l.profit) + ' دج', 'trend', 'مبيعاتك له − تكلفة شرائك', l.profit]);
+  return kcards(C) + `
+  ${adm ? `<div class="card"><h3>إضافة دفعة / تسبيق</h3><div class="row"><input id="pa" type="number" placeholder="المبلغ دج"><input id="pn" placeholder="ملاحظة (اختياري)"></div><button class="btn t" onclick="addPay('${sid}')">تسجيل الدفعة</button></div>` : ''}
+  <div class="card tw"><table><tr><th>التاريخ</th><th>العملية</th><th>التفاصيل</th><th>المبلغ</th><th>الرصيد (الدين)</th>${adm ? '<th></th>' : ''}</tr>${l.L.slice().reverse().map(x => `<tr><td>${fd(x.d)}</td><td>${x.t}</td><td>${x.txt}</td><td class="${x.amt < 0 ? 'up' : ''}">${x.amt < 0 ? '−' : '+'}${num(Math.abs(x.amt))}</td><td>${num(x.bal)}</td>${adm ? `<td>${x.id ? `<button class="btn s" onclick="delPay('${x.id}','${sid}')">✕</button>` : ''}</td>` : ''}</tr>`).join('') || '<tr><td colspan=6 class="mut">ما كاين حركات بعد.</td></tr>'}</table></div>`;
+};
+const stmt = sid => modal(`<button class="btn s" onclick="modal()">✕ إغلاق</button><h3>${esc(sname(sid))} — كشف الحساب مع المورد</h3>${acctView(sid, true)}`, true);
+async function addPay(sid) { await api('addPayment', {seller: sid, amount: val('pa'), note: val('pn')}); await dash(); stmt(sid); toast('تمت إضافة الدفعة ✔'); }
+async function delPay(id, sid) { if (!confirm('حذف هذه الدفعة؟')) return; await api('delPayment', {id}); await dash(); stmt(sid); }
+
+let OQ = '', OF = '';
+const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) return a.map(i => esc(i.name) + ' ×' + i.qty).join('<br>'); } catch (e) {} return esc(o.productName) + ' ×' + o.qty; };
+const ordersTable = () => {
+  const can = S.role !== 'seller', rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase())));
+  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select></div>
+  <div class="card tw"><table><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
+  ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
+  <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}</td>
+  <td>${num(o.price * o.qty + +(o.fee || 0))}<br><small class="mut">منها توصيل ${num(o.fee)}</small></td>
+  <td><span class="tag ${o.status}">${ST[o.status]}</span>${o.tracking ? `<br><small>${o.tracking}</small> <button class="btn s" onclick="label('${o.id}')">بوردرو${o.qty > 1 ? ' ×' + o.qty : ''}</button>` : ''}${o.lastEvent ? `<br><small class="mut">${esc(o.lastEvent)}</small>` : ''}</td>
+  <td style="white-space:nowrap">${ed ? `<button class="btn s" onclick="editOrder('${o.id}')">تعديل</button> <button class="btn s" onclick="cancelOrder('${o.id}')">إلغاء</button> ` : ''}
+  ${S.role !== 'warehouse' && o.status === 'new' ? `<button class="btn t s" onclick="act('confirmGroup',{group:'${g}',on:1})">أكّد الطلب</button> ` : ''}${S.role !== 'warehouse' && o.status === 'confirmed' ? `<button class="btn s" onclick="act('confirmGroup',{group:'${g}',on:0})">إلغاء التأكيد</button> ` : ''}${can && (o.status === 'confirmed' || (S.role === 'admin' && o.status === 'new')) ? `<button class="btn t s" onclick="shipG('${g}')">ابعث الطلب لـ Noest</button>` : ''} <button class="btn s" onclick="showLog('${g}')">السجل</button>${o.status === 'pending' ? `<button class="btn s" onclick="act('validate',{orderId:'${o.id}'})">أكّد في Noest</button>` : ''}
+  ${can && o.status === 'shipped' ? `<button class="btn s" onclick="act('status',{orderId:'${o.id}',status:'delivered'})">تسلّم</button> <button class="btn s" onclick="act('status',{orderId:'${o.id}',status:'returned'})">رجع</button>` : ''}</td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
+};
+async function editOrder(id) {
+  const o = D.orders.find(x => x.id === id), multi = (() => { try { return JSON.parse(o.items).length > 1; } catch (e) { return false; } })(); GS = S.role === 'seller' ? S.slug : (D.sellers.find(s => s.id === o.seller) || {}).slug;
+  $('#mo') || app.insertAdjacentHTML('beforeend', '<div id="mo"></div>');
+  $('#mo').innerHTML = `<div class="ov"><div class="card"><h3>تعديل ${o.id}</h3>
+  <div class="row"><input id="ec" value="${esc(o.customer)}" placeholder="الاسم"><input id="ep" value="${esc(o.phone)}" placeholder="الهاتف"><input id="eq" type="number" min="1" max="2" ${multi ? 'disabled' : ''} value="${o.qty}" placeholder="كراطن"><input id="epr" type="number" ${multi ? 'disabled' : ''} value="${o.price}" placeholder="سعر الكرطون"></div>
+  <div class="row"><select id="ed" onchange="geo('ew','ecm','ed','est')"><option value="0">توصيل للمنزل</option><option value="1" ${+o.stopDesk ? 'selected' : ''}>Stop Desk</option></select><select id="ew" onchange="geo('ew','ecm','ed','est')">${wOpts()}</select><select id="ecm"></select><select id="est" style="display:none"></select></div>
+  <div class="row"><input id="ea" value="${esc(o.address)}" placeholder="العنوان"><input id="en" value="${esc(o.note || '')}" placeholder="ملاحظة"></div>
+  <button class="btn t" onclick="saveOrder('${id}')">حفظ</button> <button class="btn" onclick="$('#mo').innerHTML=''">إغلاق</button></div></div>`;
+  $('#ew').value = o.wilaya; await geo('ew', 'ecm', 'ed', 'est'); $(+o.stopDesk ? '#est' : '#ecm').value = +o.stopDesk ? o.station : o.commune;
+}
+async function saveOrder(id) {
+  await api('editOrder', {orderId: id, customer: val('ec'), phone: val('ep'), qty: val('eq'), price: val('epr'), stopDesk: val('ed'), wilaya: val('ew'), commune: val('ecm'), station: val('est'), address: val('ea'), note: val('en')});
+  $('#mo').innerHTML = ''; toast('تم التعديل ✔'); dash();
+}
+async function cancelOrder(id) { if (confirm('إلغاء الطلب؟ الكراطن ترجع للستوك.')) await act('cancelOrder', {orderId: id}); }
+const V = {
+  orders() {
+    const manual = S.role === 'seller' ? `<div class="card"><h3>طلب يدوي</h3><div class="row"><select id="mp">${D.products.filter(p => D.prices.some(x => x.productId === p.id)).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select><input id="mq" type="number" min="1" value="1"><input id="mc" placeholder="الزبون"><input id="mph" placeholder="الهاتف"></div>
+    <div class="row"><select id="mdm" onchange="geo('mw','mcm','mdm','mst')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="mw" onchange="geo('mw','mcm','mdm','mst')">${wOpts()}</select><select id="mcm"><option value="">البلدية</option></select><select id="mst" style="display:none"><option value="">المكتب</option></select><input id="mad" placeholder="العنوان"></div><button class="btn" onclick="act('manualOrder',{productId:val('mp'),qty:val('mq'),customer:val('mc'),phone:val('mph'),wilaya:val('mw'),commune:val('mcm'),address:val('mad'),stopDesk:val('mdm'),station:val('mst')})">سجّل</button></div>` : '';
+    return `<button class="btn s" style="margin-bottom:10px" onclick="toast('كنحدّث من Noest…');act('syncNow')">حدّث الحالات من Noest</button>` + manual + ordersTable();
+  },
+  fees() {
+    if (!D.fees) { api('fees').then(r => { D.fees = r.tarifs; paint(); }); return '<p>تحميل أسعار Noest…</p>'; }
+    const d = D.fees.delivery || {}, r = D.fees.return || {};
+    return `<div class="card tw"><p class="mut">أسعار حسابك في Noest، وتتزاد تلقائيا على مبلغ الزبون (تظهرلو قبل ما يطلب وتتبعت لـ Noest ضمن المبلغ).</p><table><tr><th>الولاية</th><th>منزل</th><th>Stop Desk</th><th>إرجاع</th></tr>${W.map((n, i) => { const x = d[i + 1]; return x ? `<tr><td>${i + 1} - ${n}</td><td>${num(x.tarif)}</td><td>${num(x.tarif_stopdesk)}</td><td>${num((r[i + 1] || {}).tarif)}</td></tr>` : ''; }).join('')}</table></div>`;
+  },
+  mystore() {
+    const s = D.store;
+    return `<div class="card"><h3>متجري</h3><p class="mut">رابط متجرك: <a href="?s=${esc(S.slug)}" target="_blank" style="color:var(--acc)">افتح المتجر</a> — على Netlify يخدم كذلك: ${location.origin}/s/${esc(S.slug)}</p>
+    <div class="row"><input id="sn" value="${esc(s.name)}" placeholder="اسم المتجر"><input id="sw" value="${esc(s.wa || '')}" placeholder="واتساب (213550…)"><input id="sc" type="color" value="${s.color || '#f59e0b'}"></div>
+    <div class="row"><input id="sl" value="${esc(s.logo || '')}" placeholder="رابط الشعار"><input type="file" accept="image/*" onchange="upl(this.files[0]).then(u=>$('#sl').value=u)"></div>
+    <div class="row"><input id="sb" value="${esc(s.banner || '')}" placeholder="رابط البانر"><input type="file" accept="image/*" onchange="upl(this.files[0]).then(u=>$('#sb').value=u)"></div>
+    <button class="btn t" onclick="act('saveStore',{name:val('sn'),wa:val('sw'),color:val('sc'),logo:val('sl'),banner:val('sb')})">حفظ</button></div>`;
+  },
+  account() { return acctView(S.id, false); },
+  noest() {
+    return `<div class="card"><h3>ربط حساب Noest Express</h3><p class="mut">${D.noest.set ? 'مربوط ✔ (GUID: ' + D.noest.mask + ')' : 'ما ربطتش حسابك بعد.'}</p>
+    <div class="row"><input id="nt" type="password" placeholder="API token"><input id="ng" placeholder="User GUID"></div>
+    <button class="btn t" onclick="act('saveNoest',{token:val('nt'),guid:val('ng')})">اختبر واحفظ</button>
+    <p class="mut">الباكند يتأكد من الحساب ملي تحفظ. التوكن ما يرجعش للمتصفح، والطرود تتبعث من حسابك انت.</p></div>`;
+  },
+  stats() {
+    return view([S.id]) + `<div class="card"><h3>حقوق الاسترجاع</h3><select id="pl" onchange="act('setPlan',{plan:val('pl')})"><option value="per" ${D.plan === 'per' ? 'selected' : ''}>على كل طرد راجع (حسب سعر Noest)</option><option value="sub" ${D.plan === 'sub' ? 'selected' : ''}>اشتراك ${num(SUB_FEE)} دج في الشهر</option></select>
+    <p class="mut">الأرقام المالية تحسب الطرود اللي تبعثت (في الطريق، مسلّمة، راجعة). الطلبات الجديدة وغير المؤكدة في Noest تظهر في «قيد المعالجة»، و«الربح المتوقع» = الربح + ربح هذي الطلبات لو تسلّمت.<br>الربح = قيمة المرسل − الجملة − المعاد للمخزن (بعد سكان العامل) − المصاريف − حقوق الاسترجاع.</p></div>`;
+  },
+  exp() {
+    return `<div class="card"><h3>مصروف جديد</h3><div class="row"><input id="el" placeholder="الوصف (إعلانات، نقل…)"><input id="ea" type="number" placeholder="المبلغ دج"></div><button class="btn" onclick="act('addExpense',{label:val('el'),amount:val('ea')})">زيد</button></div>
+    <div class="card tw"><table><tr><th>التاريخ</th><th>الوصف</th><th>المبلغ</th></tr>${D.expenses.slice().reverse().map(e => `<tr><td>${fd(e.date)}</td><td>${esc(e.label)}</td><td>${num(e.amount)}</td></tr>`).join('')}</table></div>`;
+  },
+  stock() {
+    const pairP = p => p.pairs ? Math.round(p.wholesale / p.pairs * 100) / 100 : 0;
+    if (S.role === 'admin') {
+      const form = (p, id) => `<div class="card"><div id="im${id}" class="ims" data-u="${esc(JSON.stringify(imL(p)))}">${imHtml(id, imL(p))}</div>
+      <label class="dz" ondragover="event.preventDefault()" ondrop="event.preventDefault();pick({files:event.dataTransfer.files},'${id}')">＋ أضف صور (اسحبها هنا ولا اضغط — حتى 5)<input type="file" multiple accept="image/*" hidden onchange="pick(this,'${id}')"></label>
+      <div class="row"><input id="n${id}" placeholder="الاسم/الموديل" value="${esc(p.name || '')}"><input id="a${id}" type="number" placeholder="أزواج في الكرطون" value="${p.pairs || ''}" oninput="cp('${id}')"><input id="w${id}" type="number" step="0.01" placeholder="سعر بيعك للبائعين للزوج" value="${p.pairs ? pairP(p) : ''}" oninput="cp('${id}')"></div>
+      <div class="row"><input id="b${id}" type="number" step="0.01" placeholder="سعر شرائك للزوج (تكلفتك)" value="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" oninput="cp('${id}')"></div>
+      <div class="row"><input id="s${id}" type="number" placeholder="الستوك (كراطن)" value="${p.stock ?? ''}"><input id="k${id}" type="number" step="0.1" placeholder="وزن الكرطون كغ" value="${p.weight || ''}"></div>
+      <div class="row"><input id="d${id}" placeholder="وصف قصير (المقاسات، الألوان…)" value="${esc(p.desc || '')}"></div>
+      <p>سعر الكرطون للبائع = <b id="cp${id}">${num(p.wholesale)}</b> دج — ربحك في الكرطون: <b id="mg${id}" class="${pn(p.wholesale - p.buy)}">${p.buy ? num(p.wholesale - p.buy) : '—'}</b> دج</p><button class="btn t" onclick="saveP('${id}')">${p.id ? 'حفظ' : 'زيد المنتج'}</button> ${p.id ? `<button class="btn s" onclick="act('toggleProduct',{id:'${p.id}',hidden:${p.hidden ? 0 : 1}})">${p.hidden ? '👁 أظهره للبائعين' : '🙈 أخفه عن البائعين'}</button>${p.hidden ? ' <span class="tag cancelled">مخفي عن البائعين</span>' : ''}` : ''}</div>`;
+      return `<div class="pg">${D.products.map(p => form(p, p.id)).join('')}${form({}, 'new')}</div>`;
+    }
+    return `<div class="pg">${D.products.map(p => { const pr = D.prices.find(x => x.productId === p.id), sp = pr && p.pairs ? Math.round(pr.price / p.pairs * 100) / 100 : '';
+      return `<div class="card"><div class="pim">${imL(p).slice(0, 2).map(imgTag).join('')}</div><b>${esc(p.name)}</b><p class="mut">${p.pairs} زوج في الكرطون — متوفر ${p.stock} كرطون<br>سعر الجملة: ${num(pairP(p))} للزوج = <b>${num(p.wholesale)}</b> للكرطون</p>
+      <div class="row"><input id="pr${p.id}" type="number" step="0.01" placeholder="سعر بيعك للزوج" value="${sp}" oninput="$('#sp${p.id}').textContent=num(Math.round(val('pr${p.id}')*${p.pairs}*100)/100)"></div>
+      <p>سعر الكرطون للزبون: <b id="sp${p.id}">${pr ? num(pr.price) : 0}</b> دج</p><button class="btn t s" onclick="act('setPrice',{productId:'${p.id}',price:Math.round(val('pr${p.id}')*${p.pairs}*100)/100})">حفظ</button> ${pr ? `<button class="btn s" onclick="act('setVisible',{productId:'${p.id}',hidden:${pr.hidden ? 0 : 1}})">${pr.hidden ? '👁 أظهره في متجري' : '🙈 أخفه من متجري'}</button>${pr.hidden ? ' <span class="tag cancelled">مخفي من متجري</span>' : ''}` : ''}</div>`; }).join('')}</div>`;
+  },
+  ret() {
+    return scanBox() + `<div class="card tw"><table><tr><th>التاريخ</th><th>البائع</th><th>المنتج</th><th>كراطن</th><th></th></tr>${D.returns.slice().reverse().map(r => `<tr><td>${fd(r.date)}</td><td>${esc(sname(r.seller))}</td><td>${esc((D.orders.find(o => o.id === r.orderId) || {}).productName || pname(r.productId))}</td><td>${r.qty}</td>
+    <td>${r.received === 'yes' ? '<span class="tag delivered">استُقبل</span>' : `<button class="btn t s" onclick="act('receiveReturn',{id:'${r.id}'})">استقبلت في المخزن</button>`}</td></tr>`).join('') || '<tr><td colspan=5 class="mut">ما كاين مرتجعات.</td></tr>'}</table></div>`;
+  },
+  sellers() {
+    const R = D.sellers.map(s => ({s, l: ledger(s.id), rr: sel([s.id], null).rr})), T = f => R.reduce((t, x) => t + f(x.l), 0);
+    return kcards([['مبيعاتك للبائعين', num(T(l => l.taken - l.back)) + ' دج', 'box', 'بعد خصم المرتجع المُستلم'], ['تكلفة شرائك', num(T(l => l.taken - l.back - l.profit)) + ' دج', 'wallet', ''],
+      ['ربحك', num(T(l => l.profit)) + ' دج', 'trend', 'مبيعاتك − تكلفة شرائك', T(l => l.profit)], ['المحصّل (دفعات)', num(T(l => l.paid)) + ' دج', 'cash', ''], ['ديون عند البائعين', num(T(l => l.debt)) + ' دج', 'wallet', 'متبقي لك']])
+    + `<div class="card tw"><h3>حسابات البائعين</h3><table><tr><th>البائع</th><th>بضاعة مأخوذة</th><th>مرتجع</th><th>تكلفة شرائك</th><th>ربحك</th><th>دفعات</th><th>الدين</th><th>إرجاع</th><th></th></tr>${R.map(({s, l, rr}) => `<tr><td>${esc(s.name)}</td><td>${num(l.taken)}<br><small class="mut">${l.takenQ} كرطون</small></td><td>${num(l.back)}<br><small class="mut">${l.backQ} كرطون</small></td><td>${num(l.taken - l.back - l.profit)}</td><td><b class="${pn(l.profit)}">${num(l.profit)}</b></td><td>${num(l.paid)}</td><td><b>${num(l.debt)}</b></td><td>${rr}%</td><td><button class="btn t s" onclick="stmt('${s.id}')">كشف / دفعة</button></td></tr>`).join('')}</table></div>`;
+  },
+  users() {
+    const R = {admin: 'أدمين', warehouse: 'عامل مخزن', seller: 'بائع'};
+    return `<div class="card tw"><table><tr><th>المعرّف</th><th>الاسم</th><th>الدور</th><th>كلمة السر</th><th>slug المتجر</th><th></th></tr>${D.users.map(u => `<tr><td><small>${u.id}</small></td><td><input id="un${u.id}" value="${esc(u.name)}"></td>
+    <td><select id="ur${u.id}">${Object.keys(R).map(k => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${R[k]}</option>`).join('')}</select></td><td><input id="up${u.id}" value="${esc(u.pass)}"></td><td><input id="us${u.id}" value="${esc(u.slug)}"></td>
+    <td><button class="btn s" onclick="act('saveUser',{id:'${u.id}',name:val('un${u.id}'),role:val('ur${u.id}'),pass:val('up${u.id}'),slug:val('us${u.id}')})">حفظ</button></td></tr>`).join('')}</table></div>
+    <div class="card"><h3>مستخدم جديد</h3><div class="row"><input id="xn" placeholder="الاسم"><select id="xr"><option value="seller">بائع</option><option value="warehouse">عامل مخزن</option><option value="admin">أدمين</option></select><input id="xp" placeholder="كلمة السر"><input id="xs" placeholder="slug (للبائع) مثلا ahmed"></div>
+    <button class="btn" onclick="act('saveUser',{name:val('xn'),role:val('xr'),pass:val('xp'),slug:val('xs')})">زيد</button></div>`;
+  }
+};
+</script>
+</body>
+</html>
