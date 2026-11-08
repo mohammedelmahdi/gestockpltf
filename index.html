@@ -72,20 +72,23 @@ body{overflow-x:hidden}.bd{display:none;position:fixed;inset:62px 0 0 0;backgrou
   .kc .b{padding:10px;gap:8px}.kc strong{font-size:17px}.kc .i{width:40px;height:40px}.kc .f{padding:6px 10px;font-size:12px}
   .btn{min-height:40px}.btn.s{min-height:34px;padding:4px 10px}
   .ov{place-items:end center;padding:0}.ov .card,.ov .card.wide{max-width:100%;width:100%;max-height:92vh;border-radius:18px 18px 0 0;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  .pb{flex-wrap:wrap}.pb input,.pb select{min-width:0}
+  .pgrid{gap:8px;padding:10px}.hero{padding:30px 12px}.hero h1{font-size:22px}.pi{padding:8px}.pm .mi{max-height:260px}
+  .ct,.wa{bottom:calc(14px + env(safe-area-inset-bottom))}.th1,.th1 img{width:76px;height:76px}.th1 img{height:76px}
+}
+@media(max-width:1000px){
   .tw{overflow:visible}table.rt{display:block}table.rt tbody{display:block}table.rt tr.hd{display:none}
   table.rt tr{display:block;background:var(--card2);border:1px solid var(--line);border-radius:12px;margin:8px 0;padding:6px 12px}
   table.rt td{display:flex;justify-content:space-between;gap:12px;border:0;padding:5px 0;text-align:end!important;white-space:normal!important;border-bottom:1px dashed var(--line)}
   table.rt td:last-child{border-bottom:0}table.rt td::before{content:attr(data-l);color:var(--mut);font-weight:700;flex:none;text-align:start}
   table.rt td[data-l='']::before{display:none}table.rt td:empty{display:none}
-  table.rt td .btn{margin:2px}
-  .pb{flex-wrap:wrap}.pb input,.pb select{min-width:0}
-  .pgrid{gap:8px;padding:10px}.hero{padding:30px 12px}.hero h1{font-size:22px}.pi{padding:8px}.pm .mi{max-height:260px}
-  .ct,.wa{bottom:calc(14px + env(safe-area-inset-bottom))}.th1,.th1 img{width:76px;height:76px}.th1 img{height:76px}
+  table.rt td{flex-wrap:wrap}table.rt td:last-child{justify-content:flex-start}table.rt td .btn{margin:2px;max-width:100%}
 }
 @media(min-width:721px) and (max-width:900px){main{padding:14px}}
 .noimg{display:grid;place-items:center;width:100%;aspect-ratio:1;font-size:44px;background:var(--card2);border-radius:12px}.pc .noimg{border-radius:0}
 @media(max-width:720px){#toast{bottom:auto;top:calc(70px + env(safe-area-inset-top))}}
 .rk{border:0;border-radius:99px;padding:3px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}.rk.pos{background:#12372b;color:var(--ok)}.rk.wrn{background:#3b2a0a;color:#fbbf24}.rk.neg{background:#3d1d1d;color:var(--bad)}.wrn{color:#fbbf24}
+.tag{white-space:nowrap;flex:none}.pb{flex-wrap:wrap}.pb input{flex:2 1 220px}.pb select{flex:1 1 150px;width:auto}
 </style>
 </head>
 <body>
@@ -103,7 +106,7 @@ let CART = [];
 const saveCart = () => { try { localStorage['cart_' + slug] = JSON.stringify(CART); } catch (e) {} };
 const cartBadge = () => { const b = $('#cb'); if (b) b.textContent = CART.reduce((s, l) => s + l.qty, 0); };
 async function upd() {
-  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), parcels = Math.ceil(CART.reduce((s, l) => s + l.qty, 0) / 2);
+  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), parcels = CART.reduce((s, l) => s + l.qty, 0);
   const fee = val('w') ? (await api('quote', {slug, wilaya: val('w'), stopDesk: val('dm')})).fee : 0;
   $('#tot').innerHTML = `المنتجات: ${num(sub)} دج<br>التوصيل (${parcels} طرد × ${num(fee)}): ${val('w') ? num(fee * parcels) + ' دج' : 'اختار الولاية'}<br><b>المجموع عند الاستلام: ${num(sub + fee * parcels)} دج</b>`;
 }
@@ -226,7 +229,7 @@ function openP(id) {
   $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button>
   ${ims[0] ? `<img id="mi" class="mi" src="${esc(ims[0])}">` : noImg}<div class="th">${ims.map(u => `<img src="${esc(u)}" onclick="$('#mi').src=this.src">`).join('')}</div>
   <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
-  <p class="mut">كل كرطونين (من نفس المنتج أو منتجين مختلفين) = طرد توصيل واحد.</p>
+  <p class="mut">كل كرطون = طرد مستقل (التوصيل يتحسب على كل كرطون).</p>
   <div class="row"><input id="q" type="number" min="1" max="${p.stock}" value="1" placeholder="عدد الكراطن"></div>
   <button class="btn t" style="width:100%" onclick="addCart('${p.id}')">🛒 أضف للسلة</button></div></div>`;
 }
@@ -242,8 +245,8 @@ function cartQty(i, d) {
   saveCart(); cartBadge(); if (CART.length) { $('#cl').innerHTML = cartLines(); upd(); } else openCart();
 }
 function openCart() {
-  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">كل كرطونين = طرد واحد، والتوصيل يتحسب على كل طرد.</p>
-  ${CART.length ? `<div class="row"><input id="c" placeholder="الاسم الكامل"><input id="ph" type="tel" placeholder="الهاتف"></div>
+  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">كل كرطون = طرد مستقل، والتوصيل يتحسب على كل كرطون.</p>
+  ${CART.length ? `<div class="row"><input id="c" placeholder="الاسم الكامل"><input id="ph" type="tel" inputmode="tel" maxlength="16" placeholder="الهاتف (05 / 06 / 07…)"></div>
   <div class="row"><select id="dm" onchange="geo('w','cm','dm','st')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="w" onchange="geo('w','cm','dm','st')">${wOpts()}</select></div>
   <div class="row"><select id="cm"><option value="">البلدية</option></select><select id="st" style="display:none"><option value="">المكتب</option></select><input id="ad" placeholder="العنوان"></div>
   <p id="tot" class="mut"></p><button class="btn t" style="width:100%" onclick="sendOrder()">تأكيد الطلب — الدفع عند الاستلام</button>` : ''}</div></div>`;
@@ -251,7 +254,8 @@ function openCart() {
 }
 async function sendOrder() {
   if (!CART.length) return toast('السلة فارغة');
-  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), customer: val('c'), phone: val('ph'), wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
+  const ph = dzPhone(val('ph')); if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (مثال: 0550123456)');
+  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
   CART = []; saveCart(); cartBadge();
   $('#mo .card').innerHTML = `<h2>تم تسجيل طلبك ✔</h2><p>رقم الطلب: <b>${r.id}</b><br>عدد الطرود: ${r.parcels} — رسوم التوصيل: ${num(r.fee)} دج<br>نتصلو بيك للتأكيد.</p>`;
 }
@@ -269,10 +273,13 @@ function logout() { sessionStorage.clear(); S = null; login(); }
 
 /* ---------- لوحة التحكم ---------- */
 const TABS = {
-  seller: [['orders','طلباتي'],['stats','إحصائيات'],['account','حسابي مع المورد'],['exp','مصاريف'],['stock','المخزون والأسعار'],['mystore','متجري'],['fees','أسعار النقل'],['noest','Noest']],
+  seller: [['stats','لوحة التحكم'],['orders','طلباتي'],['account','حسابي مع المورد'],['exp','مصاريف'],['stock','المخزون والأسعار'],['mystore','متجري'],['team','عمالي'],['fees','أسعار النقل'],['noest','Noest']],
+  agent: [['orders','الطلبات']],
   warehouse: [['orders','الطلبات'],['ret','المرتجعات']],
-  admin: [['orders','الطلبات'],['sellers','تتبع البائعين'],['ret','المرتجعات'],['stock','المنتجات والمخزون'],['users','المستخدمون']]
+  admin: [['dash','لوحة التحكم'],['orders','الطلبات'],['sellers','تتبع البائعين'],['ret','المرتجعات'],['stock','المنتجات والمخزون'],['exp','مصاريفي'],['users','المستخدمون']]
 };
+const isSel = () => S.role === 'seller' || S.role === 'agent';
+const dzPhone = p => { let d = String(p).replace(/\D/g, ''); if (d.startsWith('00213')) d = '0' + d.slice(5); else if (d.startsWith('213') && d.length === 12) d = '0' + d.slice(3); else if (d.length === 9 && /^[567]/.test(d)) d = '0' + d; return /^0[567]\d{8}$/.test(d) ? d : ''; };
 async function dash() {
   D = await api('data'); tab = tab && TABS[S.role].some(t => t[0] === tab) ? tab : TABS[S.role][0][0]; LAST = JSON.stringify(D); paint();
 }
@@ -286,7 +293,7 @@ async function poll(force) {                 // تحديث تلقائي كل 20 
 setInterval(poll, 20000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 function paint() {
-  app.innerHTML = `<div class="top"><button class="ib mb" onclick="$('aside').classList.toggle('open')">${ic('menu')}</button>${S.slug ? `<button class="ib on" onclick="window.open('?s=${S.slug}')">${ic('eye')}</button>` : ''}<button class="ib" onclick="theme()">${ic('moon')}</button><button class="ib" onclick="dash()">${ic('refresh')}</button><button class="ib" onclick="logout()">${ic('logout')}</button><span class="brand">${esc(S.name)}</span></div>
+  app.innerHTML = `<div class="top"><button class="ib mb" onclick="$('aside').classList.toggle('open')">${ic('menu')}</button>${S.role === 'seller' && S.slug ? `<button class="ib on" onclick="window.open('?s=${S.slug}')">${ic('eye')}</button>` : ''}<button class="ib" onclick="theme()">${ic('moon')}</button><button class="ib" onclick="dash()">${ic('refresh')}</button><button class="ib" onclick="logout()">${ic('logout')}</button><span class="brand">${esc(S.name)}</span></div>
   <div class="shell"><aside>${TABS[S.role].map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="tab='${t[0]}';paint()">${t[1]}</button>`).join('')}</aside><div class="bd" onclick="$('aside').classList.remove('open')"></div><main>${V[tab]()}</main></div>`;
 }
 const sname = id => (D.sellers || []).find(s => s.id === id)?.name || '';
@@ -348,6 +355,8 @@ async function confirmG(g, p) {
   if (p < 60 && !confirm('⚠️ احتمال استلام هذا الزبون ' + p + '% فقط. تأكد منو بالهاتف قبل التأكيد. تكمل؟')) return;
   await act('confirmGroup', {group: g, on: 1});
 }
+async function delExp(id) { if (confirm('حذف هذا المصروف؟')) await act('delExpense', {id}); }
+async function delAgent(id) { if (confirm('حذف هذا العامل؟ ما يقدرش يدخل مرة أخرى.')) await act('delAgent', {id}); }
 async function shipG(g) { const r = await api('shipGroup', {group: g}); await dash(); popup('تم الإرسال لـ Noest', `${r.n} طرد تبعثو <b>غير مؤكدين</b> — أكّدهم من تطبيق Noest بعد المراجعة.`); }
 
 const pfOf = o => (o.wholesale - (o.buy === undefined || o.buy === '' || o.buy === null ? o.wholesale : o.buy)) * o.qty;
@@ -381,7 +390,7 @@ async function delPay(id, sid) { if (!confirm('حذف هذه الدفعة؟')) r
 let OQ = '', OF = '', OR = '';
 const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) return a.map(i => esc(i.name) + ' ×' + i.qty).join('<br>'); } catch (e) {} return esc(o.productName) + ' ×' + o.qty; };
 const ordersTable = () => {
-  const can = S.role !== 'seller', rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase())));
+  const can = !isSel(), rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase())));
   return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select><select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select></div>
   <div class="card tw"><table><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
   ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
@@ -393,18 +402,22 @@ const ordersTable = () => {
   ${can && o.status === 'shipped' ? `<button class="btn s" onclick="act('status',{orderId:'${o.id}',status:'delivered'})">تسلّم</button> <button class="btn s" onclick="act('status',{orderId:'${o.id}',status:'returned'})">رجع</button>` : ''}</td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
 };
 async function editOrder(id) {
-  const o = D.orders.find(x => x.id === id), multi = (() => { try { return JSON.parse(o.items).length > 1; } catch (e) { return false; } })(); GS = S.role === 'seller' ? S.slug : (D.sellers.find(s => s.id === o.seller) || {}).slug;
-  $('#mo') || app.insertAdjacentHTML('beforeend', '<div id="mo"></div>');
-  $('#mo').innerHTML = `<div class="ov"><div class="card"><h3>تعديل ${o.id}</h3>
-  <div class="row"><input id="ec" value="${esc(o.customer)}" placeholder="الاسم"><input id="ep" value="${esc(o.phone)}" placeholder="الهاتف"><input id="eq" type="number" min="1" max="2" ${multi ? 'disabled' : ''} value="${o.qty}" placeholder="كراطن"><input id="epr" type="number" ${multi ? 'disabled' : ''} value="${o.price}" placeholder="سعر الكرطون"></div>
+  const o = D.orders.find(x => x.id === id), multi = (() => { try { return JSON.parse(o.items).length > 1; } catch (e) { return false; } })();
+  GS = isSel() ? S.slug : (D.sellers.find(s => s.id === o.seller) || {}).slug;
+  const ok = p => p.id === o.productId || D.prices.some(x => x.seller === o.seller && x.productId === p.id);
+  const opts = (D.products.some(p => p.id === o.productId) ? '' : `<option value="${o.productId}">${esc(o.productName)}</option>`) + D.products.filter(ok).map(p => `<option value="${p.id}" ${p.id === o.productId ? 'selected' : ''}>${esc(p.name)}${p.stock <= 0 && p.id !== o.productId ? ' (نفد)' : ''}</option>`).join('');
+  modal(`<h3>تعديل ${o.id}</h3>
+  <div class="row"><select id="epd" ${multi ? 'disabled' : ''} onchange="$('#epr').value=(D.prices.find(x=>x.seller==='${o.seller}'&&x.productId===this.value)||{}).price||$('#epr').value">${opts}</select><input id="epr" type="number" ${multi ? 'disabled' : ''} value="${o.price}" placeholder="سعر الكرطون"></div>
+  <div class="row"><input id="ec" value="${esc(o.customer)}" placeholder="الاسم"><input id="ep" type="tel" inputmode="tel" value="${esc(o.phone)}" placeholder="الهاتف"></div>
   <div class="row"><select id="ed" onchange="geo('ew','ecm','ed','est')"><option value="0">توصيل للمنزل</option><option value="1" ${+o.stopDesk ? 'selected' : ''}>Stop Desk</option></select><select id="ew" onchange="geo('ew','ecm','ed','est')">${wOpts()}</select><select id="ecm"></select><select id="est" style="display:none"></select></div>
   <div class="row"><input id="ea" value="${esc(o.address)}" placeholder="العنوان"><input id="en" value="${esc(o.note || '')}" placeholder="ملاحظة"></div>
-  <button class="btn t" onclick="saveOrder('${id}')">حفظ</button> <button class="btn" onclick="$('#mo').innerHTML=''">إغلاق</button></div></div>`;
+  ${multi ? '<p class="mut">هذا طرد قديم فيه منتجين: المنتج والسعر ما يتبدلوش (ألغِ الطلب وسجّل جديد).</p>' : ''}
+  <button class="btn t" onclick="saveOrder('${id}')">حفظ</button> <button class="btn" onclick="modal()">إغلاق</button>`);
   $('#ew').value = o.wilaya; await geo('ew', 'ecm', 'ed', 'est'); $(+o.stopDesk ? '#est' : '#ecm').value = +o.stopDesk ? o.station : o.commune;
 }
 async function saveOrder(id) {
-  await api('editOrder', {orderId: id, customer: val('ec'), phone: val('ep'), qty: val('eq'), price: val('epr'), stopDesk: val('ed'), wilaya: val('ew'), commune: val('ecm'), station: val('est'), address: val('ea'), note: val('en')});
-  $('#mo').innerHTML = ''; toast('تم التعديل ✔'); dash();
+  await api('editOrder', {orderId: id, customer: val('ec'), phone: dzPhone(val('ep')) || val('ep'), productId: val('epd'), price: val('epr'), stopDesk: val('ed'), wilaya: val('ew'), commune: val('ecm'), station: val('est'), address: val('ea'), note: val('en')});
+  modal(); toast('تم التعديل ✔'); dash();
 }
 function cancelOrder(id) {
   modal(`<h3>إلغاء الطلب ${esc(id)}</h3><p class="mut">الكراطن ترجع للمخزون وما تتحسبش على البائع. الطلب يبقى ظاهر في القائمة وفي الحساب مع المورد (ملغى قبل البعث).</p><div class="row"><input id="cn" placeholder="سبب الإلغاء (إجباري)"></div><button class="btn t" onclick="doCancel('${id}')">تأكيد الإلغاء</button> <button class="btn" onclick="modal()">رجوع</button>`);
@@ -416,9 +429,9 @@ async function doCancel(id) {
 async function reopen(id) { if (confirm('إعادة الطلب إلى «جديد (بانتظار تأكيد البائع)»؟ الكراطن تتخصم من المخزون من جديد.')) await act('reopenOrder', {orderId: id}); }
 const V = {
   orders() {
-    const manual = S.role === 'seller' ? `<div class="card"><h3>طلب يدوي</h3><div class="row"><select id="mp">${D.products.filter(p => D.prices.some(x => x.productId === p.id)).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select><input id="mq" type="number" min="1" value="1"><input id="mc" placeholder="الزبون"><input id="mph" placeholder="الهاتف"></div>
-    <div class="row"><select id="mdm" onchange="geo('mw','mcm','mdm','mst')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="mw" onchange="geo('mw','mcm','mdm','mst')">${wOpts()}</select><select id="mcm"><option value="">البلدية</option></select><select id="mst" style="display:none"><option value="">المكتب</option></select><input id="mad" placeholder="العنوان"></div><button class="btn" onclick="act('manualOrder',{productId:val('mp'),qty:val('mq'),customer:val('mc'),phone:val('mph'),wilaya:val('mw'),commune:val('mcm'),address:val('mad'),stopDesk:val('mdm'),station:val('mst')})">سجّل</button></div>` : '';
-    return `<button class="btn s" style="margin-bottom:10px" onclick="toast('كنحدّث من Noest…');act('syncNow')">حدّث الحالات من Noest</button>` + manual + ordersTable();
+    const manual = isSel() ? `<div class="card"><h3>طلب يدوي</h3><div class="row"><select id="mp">${D.products.filter(p => D.prices.some(x => x.productId === p.id)).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select><input id="mq" type="number" min="1" value="1"><input id="mc" placeholder="الزبون"><input id="mph" type="tel" inputmode="tel" placeholder="الهاتف (05 / 06 / 07…)"></div>
+    <div class="row"><select id="mdm" onchange="geo('mw','mcm','mdm','mst')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="mw" onchange="geo('mw','mcm','mdm','mst')">${wOpts()}</select><select id="mcm"><option value="">البلدية</option></select><select id="mst" style="display:none"><option value="">المكتب</option></select><input id="mad" placeholder="العنوان"></div><button class="btn" onclick="act('manualOrder',{productId:val('mp'),qty:val('mq'),customer:val('mc'),phone:dzPhone(val('mph'))||val('mph'),wilaya:val('mw'),commune:val('mcm'),address:val('mad'),stopDesk:val('mdm'),station:val('mst')})">سجّل</button></div>` : '';
+    return (S.role === 'agent' ? '' : `<button class="btn s" style="margin-bottom:10px" onclick="toast('كنحدّث من Noest…');act('syncNow')">حدّث الحالات من Noest</button>`) + manual + ordersTable();
   },
   fees() {
     if (!D.fees) { api('fees').then(r => { D.fees = r.tarifs; paint(); }); return '<p>تحميل أسعار Noest…</p>'; }
@@ -434,6 +447,18 @@ const V = {
     <button class="btn t" onclick="act('saveStore',{name:val('sn'),wa:val('sw'),color:val('sc'),logo:val('sl'),banner:val('sb')})">حفظ</button></div>`;
   },
   account() { return acctView(S.id, false); },
+  dash() {
+    const ids = D.sellers.map(s => s.id), x = sel(ids, null), R = D.sellers.map(s => ledger(s.id)), T = f => R.reduce((t, l) => t + f(l), 0);
+    const exp = D.expenses.reduce((s, e) => s + +e.amount, 0), gp = T(l => l.profit), net = gp - exp;
+    return kcards([['الطلبات', num(x.n), 'cart', 'كل البائعين'], ['تم التسليم', num(x.dN), 'check', 'طرود'], ['راجعة', num(x.rN), 'undo', 'طرود'], ['في الانتظار', num(x.wait), 'clock', 'جديد + مؤكد + في الطريق'], ['نسبة الإرجاع', x.rr + '%', 'filter', ''],
+      ['مبيعاتك للبائعين', num(T(l => l.net)) + ' دج', 'box', 'بعد خصم الملغى والمعاد'], ['تكلفة شرائك', num(T(l => l.net - l.profit)) + ' دج', 'wallet', ''], ['الربح الإجمالي', num(gp) + ' دج', 'trend', 'مبيعاتك − تكلفة شرائك', gp],
+      ['مصاريفك', num(exp) + ' دج', 'wallet', 'من تبويب «مصاريفي»'], ['الربح الصافي', num(net) + ' دج', 'trend', 'الربح الإجمالي − مصاريفك', net], ['المحصّل من البائعين', num(T(l => l.paid)) + ' دج', 'cash', ''], ['ديون البائعين', num(T(l => l.debt)) + ' دج', 'wallet', 'متبقي لك']]);
+  },
+  team() {
+    return `<div class="card"><h3>عمال إدخال الطلبات</h3><p class="mut">العامل يشوف صفحة طلباتك فقط: يدخل الطلبات ويؤكدها ويعدلها. ما يشوفش الأرباح ولا الحساب مع المورد ولا إعدادات Noest.</p>
+    <div class="row"><input id="al" placeholder="اسم الدخول (إنجليزي، مثلا ahmed1)"><input id="an" placeholder="الاسم"><input id="ap" placeholder="كلمة السر (4 أحرف+)"></div><button class="btn t" onclick="act('saveAgent',{login:val('al'),name:val('an'),pass:val('ap')})">زيد عامل</button></div>
+    <div class="card tw"><table><tr><th>اسم الدخول</th><th>الاسم</th><th>كلمة السر</th><th></th></tr>${(D.agents || []).map(a => `<tr><td>${esc(a.id)}</td><td><input id="an${a.id}" value="${esc(a.name)}"></td><td><input id="ap${a.id}" value="${esc(a.pass)}"></td><td><button class="btn s" onclick="act('saveAgent',{id:'${a.id}',name:val('an${a.id}'),pass:val('ap${a.id}')})">حفظ</button> <button class="btn s" onclick="delAgent('${a.id}')">حذف</button></td></tr>`).join('') || '<tr><td colspan=4 class="mut">ما كاين عمال بعد.</td></tr>'}</table></div>`;
+  },
   noest() {
     return `<div class="card"><h3>ربط حساب Noest Express</h3><p class="mut">${D.noest.set ? 'مربوط ✔ (GUID: ' + D.noest.mask + ')' : 'ما ربطتش حسابك بعد.'}</p>
     <div class="row"><input id="nt" type="password" placeholder="API token"><input id="ng" placeholder="User GUID"></div>
@@ -446,7 +471,7 @@ const V = {
   },
   exp() {
     return `<div class="card"><h3>مصروف جديد</h3><div class="row"><input id="el" placeholder="الوصف (إعلانات، نقل…)"><input id="ea" type="number" placeholder="المبلغ دج"></div><button class="btn" onclick="act('addExpense',{label:val('el'),amount:val('ea')})">زيد</button></div>
-    <div class="card tw"><table><tr><th>التاريخ</th><th>الوصف</th><th>المبلغ</th></tr>${D.expenses.slice().reverse().map(e => `<tr><td>${fd(e.date)}</td><td>${esc(e.label)}</td><td>${num(e.amount)}</td></tr>`).join('')}</table></div>`;
+    <div class="card tw"><table><tr><th>التاريخ</th><th>الوصف</th><th>المبلغ</th><th></th></tr>${D.expenses.slice().reverse().map(e => `<tr><td>${fd(e.date)}</td><td>${esc(e.label)}</td><td>${num(e.amount)}</td><td><button class="btn s" onclick="delExp('${e.id}')">حذف</button></td></tr>`).join('')}</table></div>`;
   },
   stock() {
     const pairP = p => p.pairs ? Math.round(p.wholesale / p.pairs * 100) / 100 : 0;
@@ -476,12 +501,12 @@ const V = {
     + `<div class="card tw"><h3>حسابات البائعين</h3><table><tr><th>البائع</th><th>بضاعة مسجلة</th><th>ملغى قبل البعث</th><th>معادة بعد الإرسال</th><th>تكلفة شرائك</th><th>ربحك</th><th>دفعات</th><th>الدين</th><th>إرجاع</th><th></th></tr>${R.map(({s, l, rr}) => `<tr><td>${esc(s.name)}</td><td>${num(l.taken)}<br><small class="mut">${l.takenQ} كرطون</small></td><td>${num(l.canc)}<br><small class="mut">${l.cancQ} كرطون</small></td><td>${num(l.back)}<br><small class="mut">${l.backQ} كرطون</small></td><td>${num(l.net - l.profit)}</td><td><b class="${pn(l.profit)}">${num(l.profit)}</b></td><td>${num(l.paid)}</td><td><b>${num(l.debt)}</b></td><td>${rr}%</td><td><button class="btn t s" onclick="stmt('${s.id}')">كشف / دفعة</button></td></tr>`).join('')}</table></div>`;
   },
   users() {
-    const R = {admin: 'أدمين', warehouse: 'عامل مخزن', seller: 'بائع'};
-    return `<div class="card tw"><table><tr><th>المعرّف</th><th>الاسم</th><th>الدور</th><th>كلمة السر</th><th>slug المتجر</th><th></th></tr>${D.users.map(u => `<tr><td><small>${u.id}</small></td><td><input id="un${u.id}" value="${esc(u.name)}"></td>
-    <td><select id="ur${u.id}">${Object.keys(R).map(k => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${R[k]}</option>`).join('')}</select></td><td><input id="up${u.id}" value="${esc(u.pass)}"></td><td><input id="us${u.id}" value="${esc(u.slug)}"></td>
-    <td><button class="btn s" onclick="act('saveUser',{id:'${u.id}',name:val('un${u.id}'),role:val('ur${u.id}'),pass:val('up${u.id}'),slug:val('us${u.id}')})">حفظ</button></td></tr>`).join('')}</table></div>
-    <div class="card"><h3>مستخدم جديد</h3><div class="row"><input id="xn" placeholder="الاسم"><select id="xr"><option value="seller">بائع</option><option value="warehouse">عامل مخزن</option><option value="admin">أدمين</option></select><input id="xp" placeholder="كلمة السر"><input id="xs" placeholder="slug (للبائع) مثلا ahmed"></div>
-    <button class="btn" onclick="act('saveUser',{name:val('xn'),role:val('xr'),pass:val('xp'),slug:val('xs')})">زيد</button></div>`;
+    const R = {admin: 'أدمين', warehouse: 'عامل مخزن', seller: 'بائع', agent: 'عامل بائع'}, so = v => `<option value="">— البائع التابع له —</option>${D.sellers.map(s => `<option value="${s.id}" ${v === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}`;
+    return `<div class="card tw"><table><tr><th>المعرّف</th><th>الاسم</th><th>الدور</th><th>كلمة السر</th><th>slug المتجر</th><th>تابع للبائع (للعامل)</th><th></th></tr>${D.users.map(u => `<tr><td><small>${u.id}</small></td><td><input id="un${u.id}" value="${esc(u.name)}"></td>
+    <td><select id="ur${u.id}">${Object.keys(R).map(k => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${R[k]}</option>`).join('')}</select></td><td><input id="up${u.id}" value="${esc(u.pass)}"></td><td><input id="us${u.id}" value="${esc(u.slug)}"></td><td><select id="uq${u.id}">${so(u.parent)}</select></td>
+    <td><button class="btn s" onclick="act('saveUser',{id:'${u.id}',name:val('un${u.id}'),role:val('ur${u.id}'),pass:val('up${u.id}'),slug:val('us${u.id}'),parent:val('uq${u.id}')})">حفظ</button></td></tr>`).join('')}</table></div>
+    <div class="card"><h3>مستخدم جديد</h3><div class="row"><input id="xn" placeholder="الاسم"><select id="xr"><option value="seller">بائع</option><option value="warehouse">عامل مخزن</option><option value="agent">عامل بائع</option><option value="admin">أدمين</option></select><input id="xp" placeholder="كلمة السر"><input id="xs" placeholder="slug (للبائع) مثلا ahmed"><select id="xq">${so('')}</select></div>
+    <button class="btn" onclick="act('saveUser',{name:val('xn'),role:val('xr'),pass:val('xp'),slug:val('xs'),parent:val('xq')})">زيد</button></div>`;
   }
 };
 </script>
