@@ -89,6 +89,12 @@ body{overflow-x:hidden}.bd{display:none;position:fixed;inset:62px 0 0 0;backgrou
 @media(max-width:720px){#toast{bottom:auto;top:calc(70px + env(safe-area-inset-top))}}
 .rk{border:0;border-radius:99px;padding:3px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}.rk.pos{background:#12372b;color:var(--ok)}.rk.wrn{background:#3b2a0a;color:#fbbf24}.rk.neg{background:#3d1d1d;color:var(--bad)}.wrn{color:#fbbf24}
 .tag{white-space:nowrap;flex:none}.pb{flex-wrap:wrap}.pb input{flex:2 1 220px}.pb select{flex:1 1 150px;width:auto}
+.stsel{width:auto;min-width:200px;max-width:100%;padding:6px 10px;border-radius:99px;font-weight:700;font-size:13px;border:0}.stsel:disabled{opacity:1;-webkit-text-fill-color:currentColor}
+.stsel.st-new{background:var(--accd);color:var(--acc)}.stsel.st-confirmed{background:#2a1f4d;color:#b39cff}.stsel.st-pending{background:#3b2a0a;color:#fbbf24}.stsel.st-shipped{background:#16294a;color:#7ab0ff}
+.stsel.st-delivered{background:#12372b;color:var(--ok)}.stsel.st-returned{background:#3d1d1d;color:var(--bad)}.stsel.st-cancelled{background:var(--line);color:var(--mut)}
+/* علامة "Powered by Netlify" تتزاد من نتليفاي فوق الصفحة: نخلي كل الأزرار فوقها */
+body{padding-bottom:90px}.ct,.wa{bottom:96px}
+@media(max-width:720px){.ov .card,.ov .card.wide{padding-bottom:calc(104px + env(safe-area-inset-bottom))}.ct,.wa{bottom:calc(96px + env(safe-area-inset-bottom))}}
 </style>
 </head>
 <body>
@@ -309,9 +315,9 @@ function stats(os, ex, rt, plan) {
   const ret = os.filter(o => o.status === 'returned'), dN = os.filter(o => o.status === 'delivered').length;
   const months = new Set(sent.map(o => new Date(o.date).toISOString().slice(0, 7))).size;
   const rf = plan === 'sub' ? months * SUB_FEE : ret.reduce((s, o) => s + +(o.retFee || 0), 0);
-  const sales = v(sent) - v(back), cost = c(sent) - c(back), exp = ex.reduce((s, e) => s + +e.amount, 0), op = os.filter(o => ['new', 'confirmed', 'pending'].includes(o.status));
+  const sales = v(sent) - v(back), cost = c(sent) - c(back), exp = ex.reduce((s, e) => s + +e.amount, 0), op = os.filter(o => ['new', 'confirmed', 'pending'].includes(o.status)), pf = a => a.reduce((s, o) => s + (o.price - o.wholesale) * o.qty, 0), dl = os.filter(o => o.status === 'delivered'), sh = os.filter(o => o.status === 'shipped');
   return {n: new Set(os.map(o => o.group || o.id)).size, wait: os.filter(o => ['new', 'confirmed', 'pending', 'shipped'].includes(o.status)).length, sent: v(sent), back: v(back), sales, cost, exp, rf,
-    profit: sales - cost - exp - rf, open: v(op), eprofit: sales - cost - exp - rf + v(op) - c(op), dN, rN: ret.length, rr: dN + ret.length ? Math.round(ret.length / (dN + ret.length) * 100) : 0};
+    profit: pf(dl) - exp - rf, open: v(op), eprofit: pf(dl) + pf(sh) - exp - rf, dN, rN: ret.length, rr: dN + ret.length ? Math.round(ret.length / (dN + ret.length) * 100) : 0};
 }
 let P = 'all', PC = null;
 const PL = {all: 'الكل', today: 'اليوم', 7: 'آخر 7 أيام', 30: 'آخر 30 يوم'};
@@ -387,6 +393,42 @@ const stmt = sid => modal(`<button class="btn s" onclick="modal()">✕ إغلا�
 async function addPay(sid) { await api('addPayment', {seller: sid, amount: val('pa'), note: val('pn')}); await dash(); stmt(sid); toast('تمت إضافة الدفعة ✔'); }
 async function delPay(id, sid) { if (!confirm('حذف هذه الدفعة؟')) return; await api('delPayment', {id}); await dash(); stmt(sid); }
 
+/* حالات الطرد حسب Noest API (Event List) */
+const NE = [['upload', 'Uploaded to system', 'تم رفعه لـ Noest (غير مؤكد)'], ['customer_validation', 'Validated', 'مؤكد في Noest'], ['validation_collect_colis', 'Package Picked Up', 'تم استلام الطرد من عندك'], ['validation_reception_admin', 'Reception validated', 'تأكيد الاستلام في مخزن Noest'],
+  ['validation_reception', 'Picked up by driver', 'استلمه السائق'], ['fdr_activated', 'Out for delivery', 'خرج للتوصيل'], ['mise_a_jour', 'Delivery attempt', 'محاولة توصيل'], ['sent_to_redispatch', 'Sent for redispatch', 'أُعيد توزيعه'],
+  ['nouvel_tentative_asked_by_customer', 'New attempt requested by seller', 'طلب محاولة توصيل جديدة'], ['colis_suspendu', 'Suspended', 'الطرد معلّق'], ['livre', 'Delivered', 'تم التسليم'],
+  ['return_asked_by_customer', 'Return requested by partner', 'طلب إرجاع (من البائع)'], ['return_asked_by_hub', 'Return in transit', 'الإرجاع في الطريق'], ['return_dispatched_to_warehouse', 'Return dispatched to warehouse', 'راجع إلى المخزن'],
+  ['return_dispatched_to_partenaire', 'Return dispatched to partner', 'راجع إلى الشريك (البائع)'], ['colis_retour_transmit_to_partner', 'Return package transmitted to partner', 'المرتجع سُلّم للشريك'], ['livraison_echoue_recu', 'Return received by partner', 'استلم الشريك المرتجع'],
+  ['return_validated_by_partener', 'Return validated by partner', 'أكّد الشريك استلام المرتجع'], ['return_redispatched_to_livraison', 'Return put back for delivery', 'أُعيد للتوصيل'],
+  ['verssement_admin_cust', 'Amount transmitted to partner', 'المبلغ حُوّل للشريك'], ['validation_reception_cash_by_partener', 'Amount received by partner', 'استلم الشريك المبلغ'], ['verssement_admin_cust_canceled', 'Payment cancelled', 'الدفع مُلغى'],
+  ['echange_valide', 'Exchange validated', 'تم التبديل'], ['ask_to_delete_by_admin', 'Deletion requested', 'طلب حذف'], ['edited_informations', 'Information modified', 'معلومات معدّلة'], ['edit_price', 'Price modified', 'السعر معدّل'],
+  ['edit_wilaya', 'Wilaya change', 'الولاية معدّلة'], ['extra_fee', 'Package surcharge', 'رسوم إضافية'], ['pickedup', 'Pick-Up collected', 'تم جمع الطرد (Pick-up)'], ['pickup_picked_recu', 'Pick-Up received by partner', 'استلم الشريك طرد Pick-up']];
+const neKey = o => o.lastKey || (NE.find(x => x[1] === o.lastEvent) || [])[0] || (o.status === 'pending' ? 'upload' : o.status === 'shipped' ? 'customer_validation' : o.status === 'delivered' ? 'livre' : o.status === 'returned' ? 'return_dispatched_to_partenaire' : '');
+function stSel(o) {                      // قائمة منسدلة واحدة بدل الأزرار: الخيارات المتاحة حسب دورك وحالة الطلب
+  const r = S.role, adm = r === 'admin', wh = r === 'warehouse', st = o.status, pre = ['new', 'confirmed', 'cancelled'].includes(st), cur = pre ? 'S:' + st : 'N:' + neKey(o), ok = new Set([cur]), noest = r !== 'agent';
+  if (st === 'new') { if (!wh) ok.add('S:confirmed'); ok.add('S:cancelled'); if (adm) ok.add('send'); }
+  if (st === 'confirmed') { if (!wh) ok.add('S:new'); ok.add('S:cancelled'); if (adm || wh) ok.add('send'); }
+  if (st === 'cancelled' && !wh) ok.add('S:new');
+  if (st === 'pending') { ok.add('S:cancelled'); if (noest) ok.add('N:customer_validation'); }
+  if (st === 'shipped') { if (noest) { ok.add('N:nouvel_tentative_asked_by_customer'); ok.add('N:return_asked_by_customer'); } if (adm || wh) { ok.add('N:livre'); ok.add('N:return_dispatched_to_partenaire'); } }
+  const opt = (v, t) => `<option value="${v}" ${v === cur ? 'selected' : ''} ${ok.has(v) ? '' : 'disabled'}>${t}</option>`;
+  return `<select class="stsel st-${st}" onchange="chStatus('${o.id}',this.value)" ${ok.size <= 1 ? 'disabled' : ''}>
+    <optgroup label="قبل الإرسال">${['new', 'confirmed', 'cancelled'].map(k => opt('S:' + k, ST[k])).join('')}${ok.has('send') ? opt('send', '📦 إرسال لـ Noest (غير مؤكد)') : ''}</optgroup>
+    <optgroup label="حالات Noest">${cur === 'N:' ? '<option value="N:" selected disabled>—</option>' : ''}${NE.map(x => opt('N:' + x[0], x[1] + ' — ' + x[2])).join('')}</optgroup></select>`;
+}
+async function chStatus(id, v) {
+  const o = D.orders.find(x => x.id === id), g = o.group || o.id; paint();     // يرجّع القائمة للحالة الحالية لحد ما تتأكد العملية
+  if (v === 'S:cancelled') return cancelOrder(id);
+  if (v === 'S:new') return o.status === 'cancelled' ? reopen(id) : act('confirmGroup', {group: g, on: 0});
+  if (v === 'S:confirmed') return confirmG(g, o.risk ? o.risk.p : 100);
+  if (v === 'send') return shipG(g);
+  const k = v.slice(2), Q = (m, a, x) => confirm(m) && act(a, x);
+  if (k === 'customer_validation') return act('validate', {orderId: id});
+  if (k === 'nouvel_tentative_asked_by_customer') return Q('طلب محاولة توصيل جديدة من Noest لهذا الطرد؟', 'askAttempt', {orderId: id});
+  if (k === 'return_asked_by_customer') return Q('طلب إرجاع هذا الطرد من Noest؟', 'askReturn', {orderId: id});
+  if (k === 'livre') return Q('تأكيد: الزبون تسلّم الطرد؟', 'status', {orderId: id, status: 'delivered'});
+  if (k === 'return_dispatched_to_partenaire') return Q('تأكيد: الطرد رجع؟', 'status', {orderId: id, status: 'returned'});
+}
 let OQ = '', OF = '', OR = '';
 const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) return a.map(i => esc(i.name) + ' ×' + i.qty).join('<br>'); } catch (e) {} return esc(o.productName) + ' ×' + o.qty; };
 const ordersTable = () => {
@@ -396,10 +438,8 @@ const ordersTable = () => {
   ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
   <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}${rk(o)}</td>
   <td>${num(o.price * o.qty + +(o.fee || 0))}<br><small class="mut">منها توصيل ${num(o.fee)}</small></td>
-  <td><span class="tag ${o.status}">${ST[o.status]}</span>${o.tracking ? `<br><small>${o.tracking}</small> <button class="btn s" onclick="label('${o.id}')">بوردرو${o.qty > 1 ? ' ×' + o.qty : ''}</button>` : ''}${o.lastEvent ? `<br><small class="mut">${esc(o.lastEvent)}</small>` : ''}${o.status === 'cancelled' && o.cancelNote ? `<br><small>📝 ${esc(o.cancelNote)}</small>` : ''}</td>
-  <td style="white-space:nowrap">${ed ? `<button class="btn s" onclick="editOrder('${o.id}')">تعديل</button> <button class="btn s" onclick="cancelOrder('${o.id}')">إلغاء</button> ` : ''}
-  ${S.role !== 'warehouse' && o.status === 'cancelled' ? `<button class="btn s" onclick="reopen('${o.id}')">أعد تفعيله (جديد)</button> ` : ''}${S.role !== 'warehouse' && o.status === 'new' ? `<button class="btn t s" onclick="confirmG('${g}',${o.risk ? o.risk.p : 100})">أكّد الطلب</button> ` : ''}${S.role !== 'warehouse' && o.status === 'confirmed' ? `<button class="btn s" onclick="act('confirmGroup',{group:'${g}',on:0})">إلغاء التأكيد</button> ` : ''}${can && (o.status === 'confirmed' || (S.role === 'admin' && o.status === 'new')) ? `<button class="btn t s" onclick="shipG('${g}')">ابعث الطلب لـ Noest</button>` : ''} <button class="btn s" onclick="showLog('${g}')">السجل</button>${o.status === 'pending' ? `<button class="btn s" onclick="act('validate',{orderId:'${o.id}'})">أكّد في Noest</button>` : ''}
-  ${can && o.status === 'shipped' ? `<button class="btn s" onclick="act('status',{orderId:'${o.id}',status:'delivered'})">تسلّم</button> <button class="btn s" onclick="act('status',{orderId:'${o.id}',status:'returned'})">رجع</button>` : ''}</td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
+  <td>${stSel(o)}${o.tracking ? `<br><small>${o.tracking}</small> <button class="btn s" onclick="label('${o.id}')">بوردرو${o.qty > 1 ? ' ×' + o.qty : ''}</button>` : ''}${o.status === 'cancelled' && o.cancelNote ? `<br><small>📝 ${esc(o.cancelNote)}</small>` : ''}</td>
+  <td style="white-space:nowrap">${ed ? `<button class="btn s" onclick="editOrder('${o.id}')">تعديل</button> ` : ''}<button class="btn s" onclick="showLog('${g}')">السجل</button></td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
 };
 async function editOrder(id) {
   const o = D.orders.find(x => x.id === id), multi = (() => { try { return JSON.parse(o.items).length > 1; } catch (e) { return false; } })();
@@ -467,7 +507,7 @@ const V = {
   },
   stats() {
     return view([S.id]) + `<div class="card"><h3>حقوق الاسترجاع</h3><select id="pl" onchange="act('setPlan',{plan:val('pl')})"><option value="per" ${D.plan === 'per' ? 'selected' : ''}>على كل طرد راجع (حسب سعر Noest)</option><option value="sub" ${D.plan === 'sub' ? 'selected' : ''}>اشتراك ${num(SUB_FEE)} دج في الشهر</option></select>
-    <p class="mut">الأرقام المالية تحسب الطرود اللي تبعثت (في الطريق، مسلّمة، راجعة). الطلبات الجديدة وغير المؤكدة في Noest تظهر في «قيد المعالجة»، و«الربح المتوقع» = الربح + ربح هذي الطلبات لو تسلّمت.<br>الربح = قيمة المرسل − الجملة − المعاد للمخزن (بعد سكان العامل) − المصاريف − حقوق الاسترجاع.</p></div>`;
+    <p class="mut"><b>الربح</b> = ربح الطرود المسلّمة − كل المصاريف (المصاريف المسجلة + حقوق الاسترجاع).<br><b>الربح المتوقع</b> = ربح الطرود المسلّمة + ربح الطرود المبعوثة (في الطريق) − نفس المصاريف.<br>ربح الطرد = (سعر بيعك − سعر الجملة) × عدد الكراطن. الطلبات الجديدة وغير المؤكدة في «قيد المعالجة».</p></div>`;
   },
   exp() {
     return `<div class="card"><h3>مصروف جديد</h3><div class="row"><input id="el" placeholder="الوصف (إعلانات، نقل…)"><input id="ea" type="number" placeholder="المبلغ دج"></div><button class="btn" onclick="act('addExpense',{label:val('el'),amount:val('ea')})">زيد</button></div>
