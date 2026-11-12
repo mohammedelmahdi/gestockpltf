@@ -403,13 +403,14 @@ const NE = [['upload', 'Uploaded to system', 'تم رفعه لـ Noest (غير �
   ['verssement_admin_cust', 'Amount transmitted to partner', 'المبلغ حُوّل للشريك'], ['validation_reception_cash_by_partener', 'Amount received by partner', 'استلم الشريك المبلغ'], ['verssement_admin_cust_canceled', 'Payment cancelled', 'الدفع مُلغى'],
   ['echange_valide', 'Exchange validated', 'تم التبديل'], ['ask_to_delete_by_admin', 'Deletion requested', 'طلب حذف'], ['edited_informations', 'Information modified', 'معلومات معدّلة'], ['edit_price', 'Price modified', 'السعر معدّل'],
   ['edit_wilaya', 'Wilaya change', 'الولاية معدّلة'], ['extra_fee', 'Package surcharge', 'رسوم إضافية'], ['pickedup', 'Pick-Up collected', 'تم جمع الطرد (Pick-up)'], ['pickup_picked_recu', 'Pick-Up received by partner', 'استلم الشريك طرد Pick-up']];
-const neKey = o => o.lastKey || (NE.find(x => x[1] === o.lastEvent) || [])[0] || (o.status === 'pending' ? 'upload' : o.status === 'shipped' ? 'customer_validation' : o.status === 'delivered' ? 'livre' : o.status === 'returned' ? 'return_dispatched_to_partenaire' : '');
+const neKey = o => o.status === 'delivered' ? 'livre' : o.lastKey || (NE.find(x => x[1] === o.lastEvent) || [])[0] || (o.status === 'pending' ? 'upload' : o.status === 'shipped' ? 'customer_validation' : o.status === 'delivered' ? 'livre' : o.status === 'returned' ? 'return_dispatched_to_partenaire' : '');
 function stSel(o) {                      // قائمة منسدلة واحدة بدل الأزرار: الخيارات المتاحة حسب دورك وحالة الطلب
   const r = S.role, adm = r === 'admin', wh = r === 'warehouse', st = o.status, pre = ['new', 'confirmed', 'cancelled'].includes(st), cur = pre ? 'S:' + st : 'N:' + neKey(o), ok = new Set([cur]), noest = r !== 'agent';
   if (st === 'new') { if (!wh) ok.add('S:confirmed'); ok.add('S:cancelled'); if (adm) ok.add('send'); }
   if (st === 'confirmed') { if (!wh) ok.add('S:new'); ok.add('S:cancelled'); if (adm || wh) ok.add('send'); }
   if (st === 'cancelled' && !wh) ok.add('S:new');
-  if (st === 'pending') { ok.add('S:cancelled'); if (noest) ok.add('N:customer_validation'); }
+  if (st === 'pending') { ok.add('S:cancelled'); if (noest) ok.add('N:customer_validation'); if (adm || wh) { ok.add('N:livre'); ok.add('N:return_dispatched_to_partenaire'); } }
+  if (st === 'delivered' && (adm || wh)) ok.add('N:fdr_activated');
   if (st === 'shipped') { if (noest) { ok.add('N:nouvel_tentative_asked_by_customer'); ok.add('N:return_asked_by_customer'); } if (adm || wh) { ok.add('N:livre'); ok.add('N:return_dispatched_to_partenaire'); } }
   const opt = (v, t) => `<option value="${v}" ${v === cur ? 'selected' : ''} ${ok.has(v) ? '' : 'disabled'}>${t}</option>`;
   return `<select class="stsel st-${st}" onchange="chStatus('${o.id}',this.value)" ${ok.size <= 1 ? 'disabled' : ''}>
@@ -427,13 +428,15 @@ async function chStatus(id, v) {
   if (k === 'nouvel_tentative_asked_by_customer') return Q('طلب محاولة توصيل جديدة من Noest لهذا الطرد؟', 'askAttempt', {orderId: id});
   if (k === 'return_asked_by_customer') return Q('طلب إرجاع هذا الطرد من Noest؟', 'askReturn', {orderId: id});
   if (k === 'livre') return Q('تأكيد: الزبون تسلّم الطرد؟', 'status', {orderId: id, status: 'delivered'});
+  if (k === 'fdr_activated') return Q('تراجع: إرجاع هذا الطرد لحالة «في الطريق»؟', 'status', {orderId: id, status: 'shipped'});
   if (k === 'return_dispatched_to_partenaire') return Q('تأكيد: الطرد رجع؟', 'status', {orderId: id, status: 'returned'});
 }
-let OQ = '', OF = '', OR = '';
+let OQ = '', OF = '', OR = '', OSEL = '';
+const dig = s => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
 const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) return a.map(i => esc(i.name) + ' ×' + i.qty).join('<br>'); } catch (e) {} return esc(o.productName) + ' ×' + o.qty; };
 const ordersTable = () => {
-  const can = !isSel(), rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase())));
-  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select><select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select></div>
+  const can = !isSel(), rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OSEL || o.seller === OSEL) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase()) || (dig(OQ).length >= 3 && dig(o.phone).includes(dig(OQ)))));
+  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select>${can ? `<select onchange="OSEL=this.value;paint()"><option value="">كل البائعين</option>${(D.sellers || []).map(s => `<option value="${s.id}" ${OSEL === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : `<select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select>`}</div>
   <div class="card tw"><table><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
   ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
   <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}${rk(o)}</td>
