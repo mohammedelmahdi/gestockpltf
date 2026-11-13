@@ -216,6 +216,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 
 /* ---------- المتجر العام ---------- */
 const slug = (location.pathname.match(/\/s\/([^\/]+)/) || [])[1] || new URLSearchParams(location.search).get('s');
+const wref = (location.pathname.match(/\/s\/[^\/]+\/([^\/]+)/) || [])[1] || new URLSearchParams(location.search).get('w') || '';
 if (slug) store(); else if (!S) login(); else dash();
 
 async function store() {
@@ -261,7 +262,7 @@ function openCart() {
 async function sendOrder() {
   if (!CART.length) return toast('السلة فارغة');
   const ph = dzPhone(val('ph')); if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (مثال: 0550123456)');
-  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
+  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), ref: wref, customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
   CART = []; saveCart(); cartBadge();
   $('#mo .card').innerHTML = `<h2>تم تسجيل طلبك ✔</h2><p>رقم الطلب: <b>${r.id}</b><br>عدد الطرود: ${r.parcels} — رسوم التوصيل: ${num(r.fee)} دج<br>نتصلو بيك للتأكيد.</p>`;
 }
@@ -280,7 +281,7 @@ function logout() { sessionStorage.clear(); S = null; login(); }
 /* ---------- لوحة التحكم ---------- */
 const TABS = {
   seller: [['stats','لوحة التحكم'],['orders','طلباتي'],['account','حسابي مع المورد'],['exp','مصاريف'],['stock','المخزون والأسعار'],['mystore','متجري'],['team','عمالي'],['fees','أسعار النقل'],['noest','Noest']],
-  agent: [['orders','الطلبات']],
+  agent: [['orders','طلباتي'],['account','حسابي مع البائع']],
   warehouse: [['orders','الطلبات'],['ret','المرتجعات']],
   admin: [['dash','لوحة التحكم'],['orders','الطلبات'],['sellers','تتبع البائعين'],['ret','المرتجعات'],['stock','المنتجات والمخزون'],['exp','مصاريفي'],['users','المستخدمون']]
 };
@@ -367,6 +368,34 @@ async function shipG(g) { const r = await api('shipGroup', {group: g}); await da
 
 const pfOf = o => (o.wholesale - (o.buy === undefined || o.buy === '' || o.buy === null ? o.wholesale : o.buy)) * o.qty;
 const kcards = C => `<div class="kg">${C.map(c => `<div class="kc"><div class="b"><span class="i">${ic(c[2])}</span><div class="t"><small>${c[0]}</small><strong class="${c[4] !== undefined ? pn(c[4]) : ''}">${c[1]}</strong></div></div><div class="f">${c[3] || '&nbsp;'}</div></div>`).join('')}</div>`;
+/* ---- حساب العامل مع البائع: عمولة الكرطون (مستلم فقط | كل الكراطن) − الدفعات ---- */
+function aledger(aid) {
+  const os = D.orders.filter(o => o.agent === aid), L = [];
+  os.forEach(o => {
+    const f = +o.agentFee || 0, q = +o.qty, all = o.agentBasis === 'all', desc = o.id + ' — ' + itemsTxt(o).replace(/<br>/g, '، '), counted = all ? o.status !== 'cancelled' : o.status === 'delivered', dead = ['cancelled', 'returned'].includes(o.status);
+    if (counted) L.push({d: o.date, t: 'عمولة', txt: desc + (o.status === 'returned' ? ' — راجع (محسوب لأن الأساس كل الكراطن)' : ''), amt: f * q});
+    else L.push({d: o.date, t: o.status === 'cancelled' ? 'ملغى' : o.status === 'returned' ? 'راجع' : 'معلّقة', txt: desc + (dead ? ' — غير محسوب' : ' — بانتظار التسليم'), amt: 0, pend: dead ? 0 : f * q});
+  });
+  (D.agentPay || []).filter(p => p.agent === aid).forEach(p => L.push({d: p.date, t: 'دفعة', txt: esc(p.note || ''), amt: -p.amount, id: p.id}));
+  L.sort((a, b) => new Date(a.d) - new Date(b.d));
+  let bal = 0; L.forEach(l => { bal += l.amt; l.bal = bal; });
+  const cnt = s => os.filter(o => s.includes(o.status)).reduce((t, o) => t + +o.qty, 0), dq = cnt(['delivered']), rq = cnt(['returned']), cq = cnt(['cancelled']), tot = os.reduce((t, o) => t + +o.qty, 0) - cq;
+  const sum = t => L.filter(l => l.t === t).reduce((s, l) => s + l.amt, 0);
+  return {L, tot, dq, rq, cq, rate: dq + rq ? Math.round(dq / (dq + rq) * 100) : 0, earned: sum('عمولة'), pending: L.reduce((t, l) => t + (l.pend || 0), 0), paid: -sum('دفعة'), bal};
+}
+const agAcct = (aid, adm) => {
+  const l = aledger(aid), a = adm ? (D.agents || []).find(x => x.id === aid) : D.me, rr = (D.orders.filter(o => o.agent === aid)[0] || {}).agentBasis || (a && a.basis);
+  return `<div class="card"><b>الأجرة الحالية: ${num(a ? a.rate : 0)} دج لكل كرطون — تُحسب على ${a && a.basis === 'all' ? 'كل الكراطن المدخلة (بدون الملغاة)' : 'الكراطن المستلمة فقط'}</b><br><small class="mut">كل طلب يحتفظ بالأجرة والأساس اللي كانو وقت تسجيلو، فتغيير الأجرة يخص الطلبات الجديدة فقط.</small></div>`
+  + kcards([['كراطن مدخلة', num(l.tot), 'cart', `${l.dq} مسلّمة · ${l.rq} راجعة · ${l.cq} ملغاة`], ['نسبة التسليم', l.rate + '%', 'check', 'مسلّمة من (مسلّمة + راجعة)'], ['عمولة مستحقة', num(l.earned) + ' دج', 'cash', ''],
+    ['معلّقة (بانتظار التسليم)', num(l.pending) + ' دج', 'clock', 'تتحسب إذا تسلّمت'], ['مدفوعة', num(l.paid) + ' دج', 'wallet', ''], ['الباقي', num(l.bal) + ' دج', 'wallet', adm ? 'تدفعو للعامل' : 'عند البائع']])
+  + (adm ? `<div class="card"><h3>إضافة دفعة للعامل</h3><div class="row"><input id="gpa" type="number" placeholder="المبلغ دج"><input id="gpn" placeholder="ملاحظة (اختياري)"></div><button class="btn t" onclick="addAgPay('${aid}')">تسجيل الدفعة</button></div>` : '')
+  + `<div class="card tw"><table><tr><th>التاريخ</th><th>العملية</th><th>التفاصيل</th><th>المبلغ</th><th>الرصيد</th>${adm ? '<th></th>' : ''}</tr>${l.L.slice().reverse().map(x => `<tr><td>${fd(x.d)}</td><td>${x.t}</td><td>${x.txt}</td><td class="${x.amt < 0 ? 'up' : ''}">${x.amt ? (x.amt < 0 ? '−' : '+') + num(Math.abs(x.amt)) : '—'}</td><td>${num(x.bal)}</td>${adm ? `<td>${x.id ? `<button class="btn s" onclick="delAgPay('${x.id}','${aid}')">✕</button>` : ''}</td>` : ''}</tr>`).join('') || '<tr><td colspan=6 class="mut">ما كاين حركات بعد.</td></tr>'}</table></div>`;
+};
+const agStmt = aid => modal(`<button class="btn s" onclick="modal()">✕ إغلاق</button><h3>${esc((D.agents.find(a => a.id === aid) || {}).name)} — حساب العامل</h3>${agAcct(aid, true)}`, true);
+async function addAgPay(aid) { await api('addAgentPay', {agent: aid, amount: val('gpa'), note: val('gpn')}); await dash(); agStmt(aid); toast('تمت إضافة الدفعة ✔'); }
+async function delAgPay(id, aid) { if (!confirm('حذف هذه الدفعة؟')) return; await api('delAgentPay', {id}); await dash(); agStmt(aid); }
+function copyLink(l) { (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast('تم نسخ الرابط ✔')).catch(() => prompt('انسخ الرابط', l)); }
+
 /* ---- حساب البائع مع المورد: الدين = بضاعة مأخوذة (بسعر الجملة) − مرتجع مُستلم − دفعات ---- */
 function ledger(sid) {
   const os = D.orders.filter(o => o.seller === sid), L = [];   // البضاعة تتحسب على البائع من لحظة تسجيل الطلب؛ الملغى يبقى ظاهر بسطر عكسي
@@ -431,15 +460,15 @@ async function chStatus(id, v) {
   if (k === 'fdr_activated') return Q('تراجع: إرجاع هذا الطرد لحالة «في الطريق»؟', 'status', {orderId: id, status: 'shipped'});
   if (k === 'return_dispatched_to_partenaire') return Q('تأكيد: الطرد رجع؟', 'status', {orderId: id, status: 'returned'});
 }
-let OQ = '', OF = '', OR = '', OSEL = '';
+let OQ = '', OF = '', OR = '', OSEL = '', OW = '';
 const dig = s => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
 const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) return a.map(i => esc(i.name) + ' ×' + i.qty).join('<br>'); } catch (e) {} return esc(o.productName) + ' ×' + o.qty; };
 const ordersTable = () => {
-  const can = !isSel(), rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OSEL || o.seller === OSEL) && (!OQ || (o.id + o.customer + o.phone + o.tracking).toLowerCase().includes(OQ.toLowerCase()) || (dig(OQ).length >= 3 && dig(o.phone).includes(dig(OQ)))));
-  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select>${can ? `<select onchange="OSEL=this.value;paint()"><option value="">كل البائعين</option>${(D.sellers || []).map(s => `<option value="${s.id}" ${OSEL === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : `<select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select>`}</div>
+  const can = !isSel(), rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OSEL || o.seller === OSEL) && (!OW || (OW === '__none' ? !o.agent : o.agent === OW)) && (!OQ || (o.id + o.customer + o.phone + o.tracking + (o.agentName || '') + (o.agentCode || '')).toLowerCase().includes(OQ.toLowerCase()) || (dig(OQ).length >= 3 && dig(o.phone).includes(dig(OQ)))));
+  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select>${can ? `<select onchange="OSEL=this.value;paint()"><option value="">كل البائعين</option>${(D.sellers || []).map(s => `<option value="${s.id}" ${OSEL === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : `${S.role === 'seller' && (D.agents || []).length ? `<select onchange="OW=this.value;paint()"><option value="">كل العمال</option><option value="__none" ${OW === '__none' ? 'selected' : ''}>طلبات بلا عامل</option>${D.agents.map(a => `<option value="${a.id}" ${OW === a.id ? 'selected' : ''}>${esc(a.name)} (${esc(a.code)})</option>`).join('')}</select>` : ''}<select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select>`}</div>
   <div class="card tw"><table><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
   ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
-  <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}${rk(o)}</td>
+  <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}${rk(o)}${o.agent ? `<br><small class="mut">👤 ${esc(o.agentName)} · كود ${esc(o.agentCode)}</small>` : ''}</td>
   <td>${num(o.price * o.qty + +(o.fee || 0))}<br><small class="mut">منها توصيل ${num(o.fee)}</small></td>
   <td>${stSel(o)}${o.tracking ? `<br><small>${o.tracking}</small> <button class="btn s" onclick="label('${o.id}')">بوردرو${o.qty > 1 ? ' ×' + o.qty : ''}</button>` : ''}${o.status === 'cancelled' && o.cancelNote ? `<br><small>📝 ${esc(o.cancelNote)}</small>` : ''}</td>
   <td style="white-space:nowrap">${ed ? `<button class="btn s" onclick="editOrder('${o.id}')">تعديل</button> ` : ''}<button class="btn s" onclick="showLog('${g}')">السجل</button></td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
@@ -489,7 +518,7 @@ const V = {
     <div class="row"><input id="sb" value="${esc(s.banner || '')}" placeholder="رابط البانر"><input type="file" accept="image/*" onchange="upl(this.files[0]).then(u=>$('#sb').value=u)"></div>
     <button class="btn t" onclick="act('saveStore',{name:val('sn'),wa:val('sw'),color:val('sc'),logo:val('sl'),banner:val('sb')})">حفظ</button></div>`;
   },
-  account() { return acctView(S.id, false); },
+  account() { return S.role === 'agent' ? agAcct(S.id, false) : acctView(S.id, false); },
   dash() {
     const ids = D.sellers.map(s => s.id), x = sel(ids, null), R = D.sellers.map(s => ledger(s.id)), T = f => R.reduce((t, l) => t + f(l), 0);
     const exp = D.expenses.reduce((s, e) => s + +e.amount, 0), gp = T(l => l.profit), net = gp - exp;
@@ -498,9 +527,15 @@ const V = {
       ['مصاريفك', num(exp) + ' دج', 'wallet', 'من تبويب «مصاريفي»'], ['الربح الصافي', num(net) + ' دج', 'trend', 'الربح الإجمالي − مصاريفك', net], ['المحصّل من البائعين', num(T(l => l.paid)) + ' دج', 'cash', ''], ['ديون البائعين', num(T(l => l.debt)) + ' دج', 'wallet', 'متبقي لك']]);
   },
   team() {
-    return `<div class="card"><h3>عمال إدخال الطلبات</h3><p class="mut">العامل يشوف صفحة طلباتك فقط: يدخل الطلبات ويؤكدها ويعدلها. ما يشوفش الأرباح ولا الحساب مع المورد ولا إعدادات Noest.</p>
-    <div class="row"><input id="al" placeholder="اسم الدخول (إنجليزي، مثلا ahmed1)"><input id="an" placeholder="الاسم"><input id="ap" placeholder="كلمة السر (4 أحرف+)"></div><button class="btn t" onclick="act('saveAgent',{login:val('al'),name:val('an'),pass:val('ap')})">زيد عامل</button></div>
-    <div class="card tw"><table><tr><th>اسم الدخول</th><th>الاسم</th><th>كلمة السر</th><th></th></tr>${(D.agents || []).map(a => `<tr><td>${esc(a.id)}</td><td><input id="an${a.id}" value="${esc(a.name)}"></td><td><input id="ap${a.id}" value="${esc(a.pass)}"></td><td><button class="btn s" onclick="act('saveAgent',{id:'${a.id}',name:val('an${a.id}'),pass:val('ap${a.id}')})">حفظ</button> <button class="btn s" onclick="delAgent('${a.id}')">حذف</button></td></tr>`).join('') || '<tr><td colspan=4 class="mut">ما كاين عمال بعد.</td></tr>'}</table></div>`;
+    const A = D.agents || [], link = a => `${location.origin}${location.pathname}?s=${S.slug}&w=${a.code}`, R = A.map(a => ({a, l: aledger(a.id)}));
+    return `<div class="card tw"><h3>حسابات العمال</h3><table><tr><th>العامل</th><th>الكود</th><th>كراطن</th><th>مسلّمة</th><th>نسبة التسليم</th><th>عمولة مستحقة</th><th>مدفوعة</th><th>الباقي</th><th></th></tr>${R.map(({a, l}) => `<tr><td>${esc(a.name)}</td><td><b>${esc(a.code)}</b></td><td>${l.tot}</td><td>${l.dq}</td><td>${l.rate}%</td><td>${num(l.earned)}</td><td>${num(l.paid)}</td><td><b>${num(l.bal)}</b></td><td><button class="btn t s" onclick="agStmt('${a.id}')">كشف / دفعة</button></td></tr>`).join('') || '<tr><td colspan=9 class="mut">ما كاين عمال بعد.</td></tr>'}</table></div>
+    <div class="card"><h3>إضافة عامل</h3><p class="mut">العامل يشوف طلباتو فقط (اللي يدخلها بنفسو، أو اللي تجي من رابط متجرك بكودو) ويشوف حسابو معاك. ما يشوفش الأرباح ولا Noest.</p>
+    <div class="row"><input id="al" placeholder="اسم الدخول (إنجليزي: ahmed1)"><input id="an" placeholder="الاسم"><input id="ap" placeholder="كلمة السر (4 أحرف+)"></div>
+    <div class="row"><input id="ac" placeholder="الكود (اختياري، مثلا 00)"><input id="ar" type="number" placeholder="أجرة الكرطون (دج)"><select id="ab"><option value="delivered">تُحسب على الكراطن المستلمة فقط</option><option value="all">تُحسب على كل الكراطن المدخلة</option></select></div>
+    <button class="btn t" onclick="act('saveAgent',{login:val('al'),name:val('an'),pass:val('ap'),code:val('ac'),rate:val('ar'),basis:val('ab')})">زيد عامل</button></div>
+    <div class="card tw"><h3>إعدادات العمال</h3><table><tr><th>اسم الدخول</th><th>الاسم</th><th>كلمة السر</th><th>الكود</th><th>أجرة الكرطون</th><th>الأساس</th><th>رابط المتجر بكودو</th><th></th></tr>${A.map(a => `<tr><td>${esc(a.id)}</td><td><input id="an${a.id}" value="${esc(a.name)}"></td><td><input id="ap${a.id}" value="${esc(a.pass)}"></td><td><input id="ac${a.id}" value="${esc(a.code)}"></td><td><input id="ar${a.id}" type="number" value="${a.rate}"></td>
+    <td><select id="ab${a.id}"><option value="delivered" ${a.basis === 'delivered' ? 'selected' : ''}>المستلمة فقط</option><option value="all" ${a.basis === 'all' ? 'selected' : ''}>كل الكراطن</option></select></td><td><button class="btn s" onclick="copyLink('${link(a)}')">نسخ الرابط</button></td>
+    <td><button class="btn s" onclick="act('saveAgent',{id:'${a.id}',name:val('an${a.id}'),pass:val('ap${a.id}'),code:val('ac${a.id}'),rate:val('ar${a.id}'),basis:val('ab${a.id}')})">حفظ</button> <button class="btn s" onclick="delAgent('${a.id}')">حذف</button></td></tr>`).join('') || '<tr><td colspan=8 class="mut">ما كاين عمال بعد.</td></tr>'}</table><p class="mut">تغيير الأجرة أو الأساس يخص الطلبات الجديدة فقط. الطلبات القديمة تحتفظ بالأجرة اللي كانت وقت تسجيلها.</p></div>`;
   },
   noest() {
     return `<div class="card"><h3>ربط حساب Noest Express</h3><p class="mut">${D.noest.set ? 'مربوط ✔ (GUID: ' + D.noest.mask + ')' : 'ما ربطتش حسابك بعد.'}</p>
