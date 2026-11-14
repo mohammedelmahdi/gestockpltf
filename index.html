@@ -95,6 +95,7 @@ body{overflow-x:hidden}.bd{display:none;position:fixed;inset:62px 0 0 0;backgrou
 /* علامة "Powered by Netlify" تتزاد من نتليفاي فوق الصفحة: نخلي كل الأزرار فوقها */
 body{padding-bottom:90px}.ct,.wa{bottom:96px}
 @media(max-width:720px){.ov .card,.ov .card.wide{padding-bottom:calc(104px + env(safe-area-inset-bottom))}.ct,.wa{bottom:calc(96px + env(safe-area-inset-bottom))}}
+details{margin:8px 0}summary{cursor:pointer;font-weight:700;color:var(--acc)}
 </style>
 </head>
 <body>
@@ -136,13 +137,18 @@ async function geo(w, c, d, s) {
   if (sd) { const r = await api('stations', x); ss.innerHTML += r.list.map(n => `<option value="${esc(n.code)}">${esc(n.name)} — ${esc(n.address)}</option>`).join(''); }
   else { const r = await api('communes', x); cs.innerHTML += r.list.map(n => `<option>${esc(n)}</option>`).join(''); }
 }
+async function saveSP(pid) {
+  const p = D.products.find(x => x.id === pid);
+  await act('setSellerPrices', {productId: pid, prices: D.sellers.map(s => { const el = $('#sp' + pid + '_' + s.id), ex = (D.sellerPrices || []).find(x => x.seller === s.id && x.productId === pid); return {seller: s.id, wholesale: ex && el.value === el.dataset.o ? +ex.wholesale : Math.round((+el.value || 0) * p.pairs * 100) / 100}; })}); toast('تم حفظ أسعار البائعين ✔');
+}
 function cp(id) {
   const a = +val('a' + id), w = +val('w' + id), b = +val('b' + id), m = Math.round(a * (w - b) * 100) / 100;
   $('#cp' + id).textContent = num(Math.round(a * w * 100) / 100); $('#mg' + id).textContent = b ? num(m) : '—'; $('#mg' + id).className = pn(b ? m : 0);
 }
 function saveP(id) {
-  const g = k => val(k + id);
-  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: Math.round(g('a') * g('w') * 100) / 100, buy: Math.round(g('a') * g('b') * 100) / 100, stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u});
+  const g = k => val(k + id), p = id === 'new' ? null : D.products.find(x => x.id === id);
+  const unch = (k, orig) => { const el = $('#' + k + id); return p && orig && +g('a') === +p.pairs && el.value === el.dataset.o ? +orig : Math.round(g('a') * g(k) * 100) / 100; };   // خانة ما تبدّلتش = السعر الأصلي (بلا تقريب)
+  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: unch('w', p && p.wholesale), buy: unch('b', p && p.buy), stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u});
 }
 const imHtml = (id, a) => a.map((u, i) => `<div class="th1"><img src="${esc(u)}"><button onclick="rmIm('${id}',${i})">✕</button>${i ? `<button class="cv" onclick="coverIm('${id}',${i})">★ غلاف</button>` : '<em>الغلاف</em>'}</div>`).join('');
 const imSet = (id, f) => { const el = $('#im' + id), a = JSON.parse(el.dataset.u || '[]'); f(a); el.dataset.u = JSON.stringify(a); el.innerHTML = imHtml(id, a); };
@@ -300,7 +306,7 @@ async function poll(force) {                 // تحديث تلقائي كل 20 
 setInterval(poll, 20000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 function paint() {
-  app.innerHTML = `<div class="top"><button class="ib mb" onclick="$('aside').classList.toggle('open')">${ic('menu')}</button>${S.role === 'seller' && S.slug ? `<button class="ib on" onclick="window.open('?s=${S.slug}')">${ic('eye')}</button>` : ''}<button class="ib" onclick="theme()">${ic('moon')}</button><button class="ib" onclick="dash()">${ic('refresh')}</button><button class="ib" onclick="logout()">${ic('logout')}</button><span class="brand">${esc(S.name)}</span></div>
+  app.innerHTML = `<div class="top"><button class="ib mb" onclick="$('aside').classList.toggle('open')">${ic('menu')}</button>${S.role === 'seller' && S.slug ? `<button class="ib on" onclick="window.open('?s=${S.slug}')">${ic('eye')}</button>` : S.role === 'agent' && S.slug && D.me ? `<button class="ib on" title="متجر البائع بكودك" onclick="window.open('?s=${S.slug}&w=${D.me.code}')">${ic('eye')}</button>` : ''}<button class="ib" onclick="theme()">${ic('moon')}</button><button class="ib" onclick="dash()">${ic('refresh')}</button><button class="ib" onclick="logout()">${ic('logout')}</button><span class="brand">${esc(S.name)}</span></div>
   <div class="shell"><aside>${TABS[S.role].map(t => `<button class="${t[0] === tab ? 'on' : ''}" onclick="tab='${t[0]}';paint()">${t[1]}</button>`).join('')}</aside><div class="bd" onclick="$('aside').classList.remove('open')"></div><main>${V[tab]()}</main></div>`;
 }
 const sname = id => (D.sellers || []).find(s => s.id === id)?.name || '';
@@ -534,7 +540,7 @@ const V = {
     <div class="row"><input id="ac" placeholder="الكود (اختياري، مثلا 00)"><input id="ar" type="number" placeholder="أجرة الكرطون (دج)"><select id="ab"><option value="delivered">تُحسب على الكراطن المستلمة فقط</option><option value="all">تُحسب على كل الكراطن المدخلة</option></select></div>
     <button class="btn t" onclick="act('saveAgent',{login:val('al'),name:val('an'),pass:val('ap'),code:val('ac'),rate:val('ar'),basis:val('ab')})">زيد عامل</button></div>
     <div class="card tw"><h3>إعدادات العمال</h3><table><tr><th>اسم الدخول</th><th>الاسم</th><th>كلمة السر</th><th>الكود</th><th>أجرة الكرطون</th><th>الأساس</th><th>رابط المتجر بكودو</th><th></th></tr>${A.map(a => `<tr><td>${esc(a.id)}</td><td><input id="an${a.id}" value="${esc(a.name)}"></td><td><input id="ap${a.id}" value="${esc(a.pass)}"></td><td><input id="ac${a.id}" value="${esc(a.code)}"></td><td><input id="ar${a.id}" type="number" value="${a.rate}"></td>
-    <td><select id="ab${a.id}"><option value="delivered" ${a.basis === 'delivered' ? 'selected' : ''}>المستلمة فقط</option><option value="all" ${a.basis === 'all' ? 'selected' : ''}>كل الكراطن</option></select></td><td><button class="btn s" onclick="copyLink('${link(a)}')">نسخ الرابط</button></td>
+    <td><select id="ab${a.id}"><option value="delivered" ${a.basis === 'delivered' ? 'selected' : ''}>المستلمة فقط</option><option value="all" ${a.basis === 'all' ? 'selected' : ''}>كل الكراطن</option></select></td><td><button class="btn s" onclick="window.open('${link(a)}')">👁 فتح</button> <button class="btn s" onclick="copyLink('${link(a)}')">نسخ</button></td>
     <td><button class="btn s" onclick="act('saveAgent',{id:'${a.id}',name:val('an${a.id}'),pass:val('ap${a.id}'),code:val('ac${a.id}'),rate:val('ar${a.id}'),basis:val('ab${a.id}')})">حفظ</button> <button class="btn s" onclick="delAgent('${a.id}')">حذف</button></td></tr>`).join('') || '<tr><td colspan=8 class="mut">ما كاين عمال بعد.</td></tr>'}</table><p class="mut">تغيير الأجرة أو الأساس يخص الطلبات الجديدة فقط. الطلبات القديمة تحتفظ بالأجرة اللي كانت وقت تسجيلها.</p></div>`;
   },
   noest() {
@@ -556,10 +562,11 @@ const V = {
     if (S.role === 'admin') {
       const form = (p, id) => `<div class="card"><div id="im${id}" class="ims" data-u="${esc(JSON.stringify(imL(p)))}">${imHtml(id, imL(p))}</div>
       <label class="dz" ondragover="event.preventDefault()" ondrop="event.preventDefault();pick({files:event.dataTransfer.files},'${id}')">＋ أضف صور (اسحبها هنا ولا اضغط — حتى 5)<input type="file" multiple accept="image/*" hidden onchange="pick(this,'${id}')"></label>
-      <div class="row"><input id="n${id}" placeholder="الاسم/الموديل" value="${esc(p.name || '')}"><input id="a${id}" type="number" placeholder="أزواج في الكرطون" value="${p.pairs || ''}" oninput="cp('${id}')"><input id="w${id}" type="number" step="0.01" placeholder="سعر بيعك للبائعين للزوج" value="${p.pairs ? pairP(p) : ''}" oninput="cp('${id}')"></div>
-      <div class="row"><input id="b${id}" type="number" step="0.01" placeholder="سعر شرائك للزوج (تكلفتك)" value="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" oninput="cp('${id}')"></div>
+      <div class="row"><input id="n${id}" placeholder="الاسم/الموديل" value="${esc(p.name || '')}"><input id="a${id}" type="number" placeholder="أزواج في الكرطون" value="${p.pairs || ''}" oninput="cp('${id}')"><input id="w${id}" type="number" step="0.01" placeholder="سعر بيعك للبائعين للزوج" value="${p.pairs ? pairP(p) : ''}" data-o="${p.pairs ? pairP(p) : ''}" oninput="cp('${id}')"></div>
+      <div class="row"><input id="b${id}" type="number" step="0.01" placeholder="سعر شرائك للزوج (تكلفتك)" value="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" data-o="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" oninput="cp('${id}')"></div>
       <div class="row"><input id="s${id}" type="number" placeholder="الستوك (كراطن)" value="${p.stock ?? ''}"><input id="k${id}" type="number" step="0.1" placeholder="وزن الكرطون كغ" value="${p.weight || ''}"></div>
       <div class="row"><input id="d${id}" placeholder="وصف قصير (المقاسات، الألوان…)" value="${esc(p.desc || '')}"></div>
+      ${p.id && D.sellers.length ? `<details><summary>💰 أسعار بيع خاصة لكل بائع (للزوج)</summary><p class="mut">اترك الخانة فارغة ليستعمل البائع السعر الافتراضي (${pairP(p)} للزوج). يخص الطلبات الجديدة فقط.</p><div class="row">${D.sellers.map(s => { const sp = (D.sellerPrices || []).find(x => x.seller === s.id && x.productId === p.id); return `<label class="mut">${esc(s.name)}<input id="sp${p.id}_${s.id}" type="number" step="0.01" placeholder="${pairP(p)}" value="${sp && p.pairs ? Math.round(sp.wholesale / p.pairs * 100) / 100 : ''}" data-o="${sp && p.pairs ? Math.round(sp.wholesale / p.pairs * 100) / 100 : ''}"></label>`; }).join('')}</div><button class="btn s" onclick="saveSP('${p.id}')">حفظ أسعار البائعين</button></details>` : ''}
       <p>سعر الكرطون للبائع = <b id="cp${id}">${num(p.wholesale)}</b> دج — ربحك في الكرطون: <b id="mg${id}" class="${pn(p.wholesale - p.buy)}">${p.buy ? num(p.wholesale - p.buy) : '—'}</b> دج</p><button class="btn t" onclick="saveP('${id}')">${p.id ? 'حفظ' : 'زيد المنتج'}</button> ${p.id ? `<button class="btn s" onclick="act('toggleProduct',{id:'${p.id}',hidden:${p.hidden ? 0 : 1}})">${p.hidden ? '👁 أظهره للبائعين' : '🙈 أخفه عن البائعين'}</button>${p.hidden ? ' <span class="tag cancelled">مخفي عن البائعين</span>' : ''}` : ''}</div>`;
       return `<div class="pg">${D.products.map(p => form(p, p.id)).join('')}${form({}, 'new')}</div>`;
     }
