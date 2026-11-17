@@ -342,7 +342,7 @@ function sel(ids, a) {
   ids.forEach(id => { const x = stats(w(D.orders.filter(r => r.seller === id)), w(D.expenses.filter(r => r.seller === id)), w(D.returns.filter(r => r.seller === id)), planOf(id)); Object.keys(x).forEach(k => o[k] = (o[k] || 0) + x[k]); });
   o.rr = o.dN + o.rN ? Math.round(o.rN / (o.dN + o.rN) * 100) : 0; return o;
 }
-const KD = [['الطلبات','n','cart'],['تم التسليم','dN','check'],['قيمة المرسل','sent','box',1],['معاد للمخزن','back','undo',1],['الإيرادات','sales','cash',1],['تكلفة الجملة','cost','wallet',1],['المصاريف','exp','wallet',1],['حقوق الاسترجاع','rf','undo',1],['الأرباح','profit','trend',1],['قيد المعالجة','open','clock',1],['الربح المتوقع','eprofit','trend',1],['نسبة الإرجاع','rr','filter'],['في الانتظار','wait','clock']];
+const KD = [['الطلبات','n','cart'],['تم التسليم','dN','check'],['قيمة المرسل','sent','box',1],['قيمة المعاد للمخزن','back','undo',1],['الإيرادات','sales','cash',1],['تكلفة الجملة','cost','wallet',1],['المصاريف','exp','wallet',1],['حقوق الاسترجاع','rf','undo',1],['الأرباح','profit','trend',1],['قيد المعالجة','open','clock',1],['الربح المتوقع','eprofit','trend',1],['نسبة الإرجاع','rr','filter'],['في الانتظار','wait','clock']];
 const pct = (c, p) => p === null ? 0 : (!p ? (c ? 100 : 0) : Math.round((c - p) / Math.abs(p) * 100));
 const kpis = (c, p) => `<div class="kg">${KD.map(([l, k, i, m]) => { const d = pct(c[k], p ? p[k] : null); return `<div class="kc"><div class="b"><span class="i">${ic(i)}</span><div class="t"><small>${l}</small><strong class="${['profit', 'eprofit'].includes(k) ? pn(c[k]) : ''}">${num(c[k])}${m ? ' دج' : k === 'rr' ? '%' : ''}</strong></div></div><div class="f">${d > 0 ? `<span class="up">${d}% ↑</span>` : d < 0 ? `<span class="dn">${-d}% ↓</span>` : '0%'}</div></div>`; }).join('')}</div>`;
 const view = ids => { const a = rng(); return periodBar() + kpis(sel(ids, a), a ? sel(ids, [a[0] - (a[1] - a[0]), a[0]]) : null); };
@@ -356,7 +356,7 @@ async function showLog(g) {
   const r = await api('orderLog', {group: g});
   modal(`<button class="btn s" onclick="modal()">✕ إغلاق</button><h3>سجل الطلب ${esc(g)}</h3><div class="tw"><table><tr><th>التاريخ</th><th>الطرد</th><th>من</th><th>العملية</th><th>تفاصيل</th></tr>${r.list.map(l => `<tr><td>${new Date(l.date).toLocaleString('fr-DZ')}</td><td>${esc(l.orderId)}</td><td>${esc(l.by)}</td><td>${esc(l.action)}</td><td class="mut">${esc(l.detail)}</td></tr>`).join('') || '<tr><td colspan=5 class="mut">ما كاين سجل.</td></tr>'}</table></div>`, true);
 }
-const rk = o => { const r = o.risk; if (!r) return ''; const c = r.p >= 80 ? 'pos' : r.p >= 60 ? 'wrn' : 'neg'; return `<br><button class="rk ${c}" onclick="riskBox('${o.id}')">${r.p >= 80 ? '🟢' : r.p >= 60 ? '🟠' : '🔴'} احتمال الاستلام ${r.p}%${r.n ? '' : ' · زبون جديد'}</button>`; };
+const rk = o => { const r = o.risk; if (!r || !isFinite(r.p) || r.p === null) return ''; const c = r.p >= 80 ? 'pos' : r.p >= 60 ? 'wrn' : 'neg'; return `<br><button class="rk ${c}" onclick="riskBox('${o.id}')">${r.p >= 80 ? '🟢' : r.p >= 60 ? '🟠' : '🔴'} احتمال الاستلام ${r.p}%${r.n ? '' : ' · زبون جديد'}</button>`; };
 function riskBox(id) {
   const o = D.orders.find(x => x.id === id), r = o.risk, bad = r.r >= 2 && !r.d;
   modal(`<h3>احتمال استلام الزبون: <span class="${r.p >= 80 ? 'pos' : r.p >= 60 ? 'wrn' : 'neg'}">${r.p}%</span></h3>${bad ? '<p class="neg"><b>⚠️ هذا الزبون رجّع طرودو قبل ولم يستلم أي طلب عند كل البائعين.</b></p>' : ''}
@@ -373,6 +373,14 @@ async function delAgent(id) { if (confirm('حذف هذا العامل؟ ما ي�
 async function shipG(g) { const r = await api('shipGroup', {group: g}); await dash(); popup('تم الإرسال لـ Noest', `${r.n} طرد تبعثو <b>غير مؤكدين</b> — أكّدهم من تطبيق Noest بعد المراجعة.`); }
 
 const pfOf = o => (o.wholesale - (o.buy === undefined || o.buy === '' || o.buy === null ? o.wholesale : o.buy)) * o.qty;
+function cartonCards() {                 // بطاقات الكراطن (لقطة الآن، ما تتأثرش بفلتر الفترة)
+  const q = f => D.orders.filter(f).reduce((t, o) => t + +o.qty, 0), today = new Date().toDateString(), got = new Set((D.returns || []).filter(r => r.received === 'yes').map(r => r.orderId));
+  return kcards([['كراطن مبعوثة اليوم', num(q(o => o.status !== 'cancelled' && o.sentAt && new Date(o.sentAt).toDateString() === today)), 'box', 'أُرسلت لـ Noest اليوم'],
+    ['كراطن مباعة', num(q(o => o.status === 'delivered')), 'check', 'مسلّمة للزبائن'],
+    ['مسترجعة في الطريق', num(q(o => o.status === 'returned' && !got.has(o.id))), 'undo', 'راجعة من Noest ولم تُسكان بعد'],
+    ['معادة للمخزن', num(q(o => got.has(o.id))), 'box', 'استقبلها عامل المخزن (سكان)'],
+    ['جاهزة للتحضير', num(q(o => o.status === 'confirmed')), 'clock', 'طلبات مؤكدة بانتظار المخزن']]);
+}
 const kcards = C => `<div class="kg">${C.map(c => `<div class="kc"><div class="b"><span class="i">${ic(c[2])}</span><div class="t"><small>${c[0]}</small><strong class="${c[4] !== undefined ? pn(c[4]) : ''}">${c[1]}</strong></div></div><div class="f">${c[3] || '&nbsp;'}</div></div>`).join('')}</div>`;
 /* ---- حساب العامل مع البائع: عمولة الكرطون (مستلم فقط | كل الكراطن) − الدفعات ---- */
 function aledger(aid) {
@@ -471,7 +479,7 @@ const dig = s => String(s || '').replace(/\D/g, '').replace(/^0+/, '');
 const itemsTxt = o => { try { const a = JSON.parse(o.items); if (a && a.length) return a.map(i => esc(i.name) + ' ×' + i.qty).join('<br>'); } catch (e) {} return esc(o.productName) + ' ×' + o.qty; };
 const ordersTable = () => {
   const can = !isSel(), rows = D.orders.slice().reverse().filter(o => (!OF || o.status === OF) && (!OR || (o.risk && o.risk.p < 60)) && (!OSEL || o.seller === OSEL) && (!OW || (OW === '__none' ? !o.agent : o.agent === OW)) && (!OQ || (o.id + o.customer + o.phone + o.tracking + (o.agentName || '') + (o.agentCode || '')).toLowerCase().includes(OQ.toLowerCase()) || (dig(OQ).length >= 3 && dig(o.phone).includes(dig(OQ)))));
-  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${Object.keys(ST).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select>${can ? `<select onchange="OSEL=this.value;paint()"><option value="">كل البائعين</option>${(D.sellers || []).map(s => `<option value="${s.id}" ${OSEL === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : `${S.role === 'seller' && (D.agents || []).length ? `<select onchange="OW=this.value;paint()"><option value="">كل العمال</option><option value="__none" ${OW === '__none' ? 'selected' : ''}>طلبات بلا عامل</option>${D.agents.map(a => `<option value="${a.id}" ${OW === a.id ? 'selected' : ''}>${esc(a.name)} (${esc(a.code)})</option>`).join('')}</select>` : ''}<select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select>`}</div>
+  return `<div class="card pb"><input placeholder="بحث: اسم، هاتف، رقم طلب…" value="${esc(OQ)}" onchange="OQ=this.value;paint()"><select onchange="OF=this.value;paint()"><option value="">كل الحالات</option>${(S.role === 'warehouse' ? ['new', 'confirmed', 'pending'] : Object.keys(ST)).map(k => `<option value="${k}" ${OF === k ? 'selected' : ''}>${ST[k]}</option>`).join('')}</select>${can ? `<select onchange="OSEL=this.value;paint()"><option value="">كل البائعين</option>${(D.sellers || []).map(s => `<option value="${s.id}" ${OSEL === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>` : `${S.role === 'seller' && (D.agents || []).length ? `<select onchange="OW=this.value;paint()"><option value="">كل العمال</option><option value="__none" ${OW === '__none' ? 'selected' : ''}>طلبات بلا عامل</option>${D.agents.map(a => `<option value="${a.id}" ${OW === a.id ? 'selected' : ''}>${esc(a.name)} (${esc(a.code)})</option>`).join('')}</select>` : ''}<select onchange="OR=this.value;paint()"><option value="">كل الاحتمالات</option><option value="low" ${OR ? 'selected' : ''}>احتمال استلام منخفض (أقل من 60%)</option></select>`}</div>
   <div class="card tw"><table><tr><th>الطلب</th><th>${can ? 'البائع / ' : ''}المنتج</th><th>الزبون</th><th>المبلغ</th><th>الحالة</th><th></th></tr>
   ${rows.map(o => { const ed = ['new', 'confirmed', 'pending'].includes(o.status), g = o.group || o.id; return `<tr><td>${o.id}<br><small class="mut">${fd(o.date)}</small></td><td>${can ? esc(sname(o.seller)) + '<br>' : ''}${itemsTxt(o)}</td>
   <td>${esc(o.customer)}<br><small>${esc(o.phone)} — ولاية ${esc(o.wilaya)}، ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}${+o.weight ? ' — ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}${rk(o)}${o.agent ? `<br><small class="mut">👤 ${esc(o.agentName)} · كود ${esc(o.agentCode)}</small>` : ''}</td>
@@ -550,7 +558,7 @@ const V = {
     <p class="mut">الباكند يتأكد من الحساب ملي تحفظ. التوكن ما يرجعش للمتصفح، والطرود تتبعث من حسابك انت.</p></div>`;
   },
   stats() {
-    return view([S.id]) + `<div class="card"><h3>حقوق الاسترجاع</h3><select id="pl" onchange="act('setPlan',{plan:val('pl')})"><option value="per" ${D.plan === 'per' ? 'selected' : ''}>على كل طرد راجع (حسب سعر Noest)</option><option value="sub" ${D.plan === 'sub' ? 'selected' : ''}>اشتراك ${num(SUB_FEE)} دج في الشهر</option></select>
+    return cartonCards() + view([S.id]) + `<div class="card"><h3>حقوق الاسترجاع</h3><select id="pl" onchange="act('setPlan',{plan:val('pl')})"><option value="per" ${D.plan === 'per' ? 'selected' : ''}>على كل طرد راجع (حسب سعر Noest)</option><option value="sub" ${D.plan === 'sub' ? 'selected' : ''}>اشتراك ${num(SUB_FEE)} دج في الشهر</option></select>
     <p class="mut"><b>الربح</b> = ربح الطرود المسلّمة − كل المصاريف (المصاريف المسجلة + حقوق الاسترجاع).<br><b>الربح المتوقع</b> = ربح الطرود المسلّمة + ربح الطرود المبعوثة (في الطريق) − نفس المصاريف.<br>ربح الطرد = (سعر بيعك − سعر الجملة) × عدد الكراطن. الطلبات الجديدة وغير المؤكدة في «قيد المعالجة».</p></div>`;
   },
   exp() {
