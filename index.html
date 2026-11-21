@@ -201,7 +201,7 @@ async function camScan() {
 async function label(id) {
   const r = await api('label', {orderId: id}), o = D.orders.find(x => x.id === id);
   let out = Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0));
-  if (+o.qty > 1 && window.PDFLib) {                       // نسخة لكل كرطون + ترقيم 1/2 و 2/2
+  if (+o.qty > 1 && !+o.oneParcel && window.PDFLib) {    // الطلبات القديمة/المنفصلة: نسخة لكل طرد
     const {PDFDocument, StandardFonts} = PDFLib, src = await PDFDocument.load(out), doc = await PDFDocument.create(), f = await doc.embedFont(StandardFonts.HelveticaBold);
     for (let i = 1; i <= +o.qty; i++) { const [pg] = await doc.copyPages(src, [0]); doc.addPage(pg); pg.drawText(i + '/' + o.qty, {x: 8, y: pg.getHeight() - 22, size: 16, font: f}); }
     out = await doc.save();
@@ -565,6 +565,10 @@ function newOrder() {
   <div class="row" style="margin-top:10px"><input id="mc" placeholder="اسم الزبون"><input id="mph" type="tel" inputmode="tel" placeholder="الهاتف (05 / 06 / 07…)"></div>
   <div class="row"><select id="mdm" onchange="geo('mw','mcm','mdm','mst')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="mw" onchange="geo('mw','mcm','mdm','mst')">${wOpts()}</select><select id="mcm"><option value="">البلدية</option></select><select id="mst" style="display:none"><option value="">المكتب</option></select></div>
   <div class="row"><input id="mad" placeholder="العنوان"><input id="mnt" placeholder="ملاحظة (اختياري)"></div>
+  <label style="display:flex;align-items:center;gap:9px;margin:10px 2px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;cursor:pointer">
+    <input id="msingle" type="checkbox" checked style="width:20px;height:20px;flex:none;accent-color:var(--acc)">
+    <span><b>جمع الكراطن في طرد واحد</b><small class="mut" style="display:block">Tracking واحد مهما كان عدد الكراطن المختارة</small></span>
+  </label>
   <button class="btn t" onclick="submitManual()">تسجيل الطلب</button> <button class="btn" onclick="modal()">إلغاء</button>`, true);
 }
 async function submitManual() {
@@ -572,8 +576,8 @@ async function submitManual() {
   if (!items.length) return toast('اختار منتج وعدد الكراطن');
   if (!val('mc').trim()) return toast('اكتب اسم الزبون');
   if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (05 / 06 / 07 + 8 أرقام)');
-  const r = await api('manualOrder', {items, customer: val('mc'), phone: ph, wilaya: val('mw'), commune: val('mcm'), address: val('mad'), stopDesk: val('mdm'), station: val('mst'), note: val('mnt')});
-  await dash(); popup('تم تسجيل الطلب ✔', `رقم الطلب: <b>${r.id}</b><br>${r.parcels} طرد — رسوم التوصيل ${num(r.fee)} دج`);
+  const r = await api('manualOrder', {items, customer: val('mc'), phone: ph, wilaya: val('mw'), commune: val('mcm'), address: val('mad'), stopDesk: val('mdm'), station: val('mst'), note: val('mnt'), singleParcel: !!$('#msingle').checked});
+  await dash(); popup('تم تسجيل الطلب ✔', `رقم الطلب: <b>${r.id}</b><br>${r.cartons || r.parcels} كرطون — ${r.parcels} طرد<br>رسوم التوصيل ${num(r.fee)} دج`);
 }
 async function addToOrder(id) {
   const items = getLines('a'); if (!items.length) return toast('اختار منتج وعدد الكراطن');
@@ -588,7 +592,7 @@ async function printLabels() {                  // يدمج بوردرو كل ا
   modal(`<h3>جاري تجهيز البوردرو…</h3><p id="lp" class="mut">0 / ${ids.length}</p>`);
   for (const id of ids) {
     try {
-      const r = await api('label', {orderId: id}, true), o = D.orders.find(x => x.id === id), src = await PDFDocument.load(Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0))), cp = Math.max(1, +o.qty);
+      const r = await api('label', {orderId: id}, true), o = D.orders.find(x => x.id === id), src = await PDFDocument.load(Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0))), cp = +o.oneParcel ? 1 : Math.max(1, +o.qty);
       for (let k = 1; k <= cp; k++) for (const pg of await out.copyPages(src, src.getPageIndices())) { out.addPage(pg); if (cp > 1) pg.drawText(k + '/' + cp, {x: 8, y: pg.getHeight() - 22, size: 16, font: f}); }
       ok++;
     } catch (e) { fail.push(id); }
