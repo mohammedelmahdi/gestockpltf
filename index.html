@@ -127,7 +127,7 @@ let CART = [];
 const saveCart = () => { try { localStorage['cart_' + slug] = JSON.stringify(CART); } catch (e) {} };
 const cartBadge = () => { const b = $('#cb'); if (b) b.textContent = CART.reduce((s, l) => s + l.qty, 0); };
 async function upd() {
-  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), parcels = CART.reduce((s, l) => s + l.qty, 0);
+  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), cartons = CART.reduce((s, l) => s + l.qty, 0), parcels = $('#csingle') && $('#csingle').checked ? Math.ceil(cartons / 2) : cartons;
   const fee = val('w') ? (await api('quote', {slug, wilaya: val('w'), stopDesk: val('dm')})).fee : 0;
   $('#tot').innerHTML = `المنتجات: ${num(sub)} دج<br>التوصيل (${parcels} طرد × ${num(fee)}): ${val('w') ? num(fee * parcels) + ' دج' : 'اختار الولاية'}<br><b>المجموع عند الاستلام: ${num(sub + fee * parcels)} دج</b>`;
 }
@@ -247,7 +247,7 @@ async function store() {
   app.innerHTML = `<div class="st"><div class="an">🚚 توصيل لـ 58 ولاية — الدفع عند الاستلام</div>
   <header class="sh"><div class="bx">${d.logo ? `<img src="${esc(d.logo)}">` : ''}<b>${esc(d.shop)}</b></div><button class="btn s" onclick="trackBox()">تتبع طلبك</button></header>
   <div class="hero" ${d.banner ? `style="background-image:linear-gradient(#0006,#0006),url('${esc(d.banner)}')"` : ''}><h1>${esc(d.shop)}</h1><p>أحذية بالجملة — اطلب بالكرطون</p></div>
-  <div class="pgrid">${I.map(p => `<div class="pc" onclick="openP('${p.id}')">${imL(p)[0] ? `<img src="${esc(imL(p)[0])}">` : noImg}<div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div><button class="btn t">اطلب الآن</button></div></div>`).join('') || '<p>قريبا…</p>'}</div>
+  <div class="pgrid">${I.map(p => `<div class="pc" onclick="openP('${p.id}')">${imL(p)[0] ? `<img src="${esc(imL(p)[0])}">` : noImg}<div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون · ${num(p.price / Math.max(1, p.pairs))} دج للزوج</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div><button class="btn t">اطلب الآن</button></div></div>`).join('') || '<p>قريبا…</p>'}</div>
   ${d.wa ? `<a class="wa" href="https://wa.me/${esc(d.wa)}" target="_blank">واتساب</a>` : ''}<footer>© ${esc(d.shop)}</footer></div><button class="ct" onclick="openCart()">🛒 <span id="cb">0</span></button><div id="mo"></div>`;
   cartBadge();
 }
@@ -255,8 +255,8 @@ function openP(id) {
   const p = I.find(x => x.id === id), ims = imL(p);
   $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button>
   ${ims[0] ? `<img id="mi" class="mi" src="${esc(ims[0])}">` : noImg}<div class="th">${ims.map(u => `<img src="${esc(u)}" onclick="$('#mi').src=this.src">`).join('')}</div>
-  <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
-  <p class="mut">كل كرطون = طرد مستقل (التوصيل يتحسب على كل كرطون).</p>
+  <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون · سعر الزوج ${num(p.price / Math.max(1, p.pairs))} دج ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
+  <p class="mut">اختار طريقة تجميع الكراطن في السلة قبل تأكيد الطلب.</p>
   <div class="row"><input id="q" type="number" min="1" max="${p.stock}" value="1" placeholder="عدد الكراطن"></div>
   <button class="btn t" style="width:100%" onclick="addCart('${p.id}')">🛒 أضف للسلة</button></div></div>`;
 }
@@ -265,14 +265,16 @@ function addCart(id) {
   if (l) { l.qty = t; l.stock = p.stock; } else CART.push({id, name: p.name, price: p.price, img: imL(p)[0] || '', qty: t, stock: p.stock});
   saveCart(); cartBadge(); $('#mo').innerHTML = ''; toast('أضيف للسلة ✔');
 }
-const cartLines = () => CART.map((l, i) => `<div class="cl">${l.img ? `<img src="${esc(l.img)}">` : '<div class="noimg" style="width:56px;height:56px;font-size:24px">👟</div>'}<div style="flex:1"><b>${esc(l.name)}</b><br><small class="mut">${num(l.price)} دج / كرطون</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`).join('') || '<p class="mut">السلة فارغة.</p>';
+const cartLines = () => CART.map((l, i) => { const p = I.find(x => x.id === l.id); return `<div class="cl">${l.img ? `<img src="${esc(l.img)}">` : '<div class="noimg" style="width:56px;height:56px;font-size:24px">👟</div>'}<div style="flex:1"><b>${esc(l.name)}</b><br><small class="mut">${num(l.price)} دج / كرطون · ${num(l.price / Math.max(1, p ? p.pairs : 1))} دج للزوج</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`; }).join('') || '<p class="mut">السلة فارغة.</p>';
 function cartQty(i, d) {
   const l = CART[i]; l.qty += d;
   if (l.qty < 1) CART.splice(i, 1); else if (l.qty > l.stock) { l.qty = l.stock; toast('الستوك المتوفر: ' + l.stock); }
   saveCart(); cartBadge(); if (CART.length) { $('#cl').innerHTML = cartLines(); upd(); } else openCart();
 }
 function openCart() {
-  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">كل كرطون = طرد مستقل، والتوصيل يتحسب على كل كرطون.</p>
+  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">اختار كيفاش تحب يتسجل الطلب:</p>
+  <label style="display:flex;gap:9px;align-items:center;padding:10px;background:var(--card2);border-radius:10px;margin:8px 0"><input id="csingle" type="checkbox" checked onchange="upd()" style="width:19px;height:19px"><span>كل زوج كراطن في طرد واحد (Tracking واحد لكل زوج)</span></label>
+  <p class="mut">إذا ما فعلتش الخيار، كل كرطون يكون طرد وTracking مستقل. وإذا كان العدد فردي، الكرطون الأخير يكون طرد وحده.</p>
   ${CART.length ? `<div class="row"><input id="c" placeholder="الاسم الكامل"><input id="ph" type="tel" inputmode="tel" maxlength="16" placeholder="الهاتف (05 / 06 / 07…)"></div>
   <div class="row"><select id="dm" onchange="geo('w','cm','dm','st')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="w" onchange="geo('w','cm','dm','st')">${wOpts()}</select></div>
   <div class="row"><select id="cm"><option value="">البلدية</option></select><select id="st" style="display:none"><option value="">المكتب</option></select><input id="ad" placeholder="العنوان"></div>
@@ -282,7 +284,7 @@ function openCart() {
 async function sendOrder() {
   if (!CART.length) return toast('السلة فارغة');
   const ph = dzPhone(val('ph')); if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (مثال: 0550123456)');
-  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), ref: wref, customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
+  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), ref: wref, singleParcel: !!$('#csingle').checked, customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
   CART = []; saveCart(); cartBadge();
   $('#mo .card').innerHTML = `<h2>تم تسجيل طلبك ✔</h2><p>رقم الطلب: <b>${r.id}</b><br>عدد الطرود: ${r.parcels} — رسوم التوصيل: ${num(r.fee)} دج<br>نتصلو بيك للتأكيد.</p>`;
 }
@@ -555,7 +557,7 @@ let SEL = new Set(), VIS = [];
 const wname = w => W[(+w) - 1] || w;
 function lineHtml(pfx, i, sid) {                 // سطر منتج + عدد كراطن (للطلب اليدوي وإضافة منتجات لطلب)
   const ps = D.products.filter(p => D.prices.some(x => x.productId === p.id && (!sid || x.seller === sid)));
-  return `<div class="row ln"><select id="${pfx}p${i}">${ps.map(p => { const pr = D.prices.find(x => x.productId === p.id && (!sid || x.seller === sid)); return `<option value="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>${esc(p.name)} — ${num(pr.price)} دج${p.stock <= 0 ? ' (نفد)' : ` (متوفر ${p.stock})`}</option>`; }).join('')}</select><input id="${pfx}q${i}" type="number" min="1" value="1" placeholder="كراطن"></div>`;
+  return `<div class="row ln"><select id="${pfx}p${i}">${ps.map(p => { const pr = D.prices.find(x => x.productId === p.id && (!sid || x.seller === sid)); return `<option value="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>${esc(p.name)} — ${num(pr.price)} دج/كرطون (${num(pr.price / Math.max(1, p.pairs))} دج/زوج)${p.stock <= 0 ? ' (نفد)' : ` (متوفر ${p.stock})`}</option>`; }).join('')}</select><input id="${pfx}q${i}" type="number" min="1" value="1" placeholder="كراطن"></div>`;
 }
 const getLines = pfx => [...document.querySelectorAll(`#${pfx}l .ln`)].map(r => ({productId: r.querySelector('select').value, qty: +r.querySelector('input').value || 0})).filter(x => x.productId && x.qty > 0);
 function addLine(pfx, sid) { const box = $('#' + pfx + 'l'); box.insertAdjacentHTML('beforeend', lineHtml(pfx, box.children.length, sid)); }
@@ -567,7 +569,7 @@ function newOrder() {
   <div class="row"><input id="mad" placeholder="العنوان"><input id="mnt" placeholder="ملاحظة (اختياري)"></div>
   <label style="display:flex;align-items:center;gap:9px;margin:10px 2px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;cursor:pointer">
     <input id="msingle" type="checkbox" checked style="width:20px;height:20px;flex:none;accent-color:var(--acc)">
-    <span><b>جمع الكراطن في طرد واحد</b><small class="mut" style="display:block">Tracking واحد مهما كان عدد الكراطن المختارة</small></span>
+    <span><b>كل زوج كراطن في طرد واحد</b><small class="mut" style="display:block">Tracking واحد لكل زوج، والكرطون الأخير وحده إذا كان العدد فردياً</small></span>
   </label>
   <button class="btn t" onclick="submitManual()">تسجيل الطلب</button> <button class="btn" onclick="modal()">إلغاء</button>`, true);
 }
@@ -625,15 +627,16 @@ async function editOrder(id) {
   modal(`<h3>تعديل ${o.id}</h3>
   <div class="row"><select id="epd" ${multi ? 'disabled' : ''} onchange="$('#epr').value=(D.prices.find(x=>x.seller==='${o.seller}'&&x.productId===this.value)||{}).price||$('#epr').value">${opts}</select><input id="epr" type="number" ${multi ? 'disabled' : ''} value="${o.price}" placeholder="سعر الكرطون"></div>
   <div class="row"><input id="ec" value="${esc(o.customer)}" placeholder="الاسم"><input id="ep" type="tel" inputmode="tel" value="${esc(o.phone)}" placeholder="الهاتف"></div>
+  <label style="display:flex;align-items:center;gap:9px;margin:10px 2px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px"><input id="esingle" type="checkbox" ${+o.oneParcel ? 'checked' : ''} style="width:20px;height:20px;accent-color:var(--acc)"><span><b>كل زوج كراطن في طرد واحد</b><small class="mut" style="display:block">Tracking واحد لكل زوج، والكرطون الأخير وحده إذا كان العدد فردياً</small></span></label>
   <div class="row"><select id="ed" onchange="geo('ew','ecm','ed','est')"><option value="0">توصيل للمنزل</option><option value="1" ${+o.stopDesk ? 'selected' : ''}>Stop Desk</option></select><select id="ew" onchange="geo('ew','ecm','ed','est')">${wOpts()}</select><select id="ecm"></select><select id="est" style="display:none"></select></div>
   <div class="row"><input id="ea" value="${esc(o.address)}" placeholder="العنوان"><input id="en" value="${esc(o.note || '')}" placeholder="ملاحظة"></div>
   ${multi ? '<p class="mut">هذا طرد قديم فيه منتجين: المنتج والسعر ما يتبدلوش (ألغِ الطلب وسجّل جديد).</p>' : ''}
-  ${['new', 'confirmed', 'pending'].includes(o.status) && D.prices.some(x => x.seller === o.seller) ? `<details><summary>➕ أضف منتجات لنفس الطلب</summary><p class="mut">كل كرطون يتسجل كطرد جديد بنفس بيانات الزبون.</p><div id="al">${lineHtml('a', 0, o.seller)}</div><button class="btn s" onclick="addLine('a','${o.seller}')">＋ منتج آخر</button> <button class="btn t s" onclick="addToOrder('${id}')">أضف للطلب</button></details>` : ''}
+  ${['new', 'confirmed', 'pending'].includes(o.status) && D.prices.some(x => x.seller === o.seller) ? `<details><summary>➕ أضف منتجات لنفس الطلب</summary><p class="mut">كل كرطون يُضاف كطرد مستقل بنفس بيانات الزبون؛ غيّر طريقة التجميع من التعديل إذا لزم.</p><div id="al">${lineHtml('a', 0, o.seller)}</div><button class="btn s" onclick="addLine('a','${o.seller}')">＋ منتج آخر</button> <button class="btn t s" onclick="addToOrder('${id}')">أضف للطلب</button></details>` : ''}
   <button class="btn t" onclick="saveOrder('${id}')">حفظ</button> <button class="btn" onclick="modal()">إغلاق</button>`);
   $('#ew').value = o.wilaya; await geo('ew', 'ecm', 'ed', 'est'); $(+o.stopDesk ? '#est' : '#ecm').value = +o.stopDesk ? o.station : o.commune;
 }
 async function saveOrder(id) {
-  await api('editOrder', {orderId: id, customer: val('ec'), phone: dzPhone(val('ep')) || val('ep'), productId: val('epd'), price: val('epr'), stopDesk: val('ed'), wilaya: val('ew'), commune: val('ecm'), station: val('est'), address: val('ea'), note: val('en')});
+  await api('editOrder', {orderId: id, customer: val('ec'), phone: dzPhone(val('ep')) || val('ep'), productId: val('epd'), price: val('epr'), stopDesk: val('ed'), wilaya: val('ew'), commune: val('ecm'), station: val('est'), address: val('ea'), note: val('en'), singleParcel: !!$('#esingle').checked});
   modal(); toast('تم التعديل ✔'); dash();
 }
 function cancelOrder(id) {
