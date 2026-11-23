@@ -110,6 +110,9 @@ details{margin:8px 0}summary{cursor:pointer;font-weight:700;color:var(--acc)}
 .sw span:before{content:'';position:absolute;width:20px;height:20px;top:3px;inset-inline-start:3px;background:#fff;border-radius:50%;transition:.2s}.sw input:checked+span{background:var(--ok)}.sw input:checked+span:before{inset-inline-start:23px}.sw input:disabled+span{opacity:.4;cursor:not-allowed}
 .ov .card .card{border:0;padding:0;margin:0;background:none}
 @media(max-width:1000px){.prow,.prow.arow{grid-template-columns:64px 1fr}.pcost,.psell,.pstk,.pact{grid-column:1/-1}.pvis{grid-column:1/-1;flex-direction:row;align-items:center;gap:10px}.pact .btn{width:100%}.stk input{flex:1}}
+
+.store-tools{max-width:1200px;margin:18px auto;padding:0 14px}.store-tools input{width:100%;padding:14px;border:1px solid var(--line);border-radius:12px;font:inherit;margin-bottom:12px}.store-cats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.cat-chip{border:1px solid var(--line);background:var(--card2);color:inherit;border-radius:999px;padding:8px 14px;font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px}.cat-chip.active{background:var(--acc);color:#111;border-color:var(--acc)}.sold-out{opacity:.82;cursor:default!important}.sold-label{display:inline-block;background:#fee2e2;color:#991b1b;padding:7px 12px;border-radius:8px;font-weight:800;margin-top:8px}.sold-out>img{filter:grayscale(.8)}
+
 </style>
 </head>
 <body>
@@ -124,6 +127,7 @@ const W = "Adrar,Chlef,Laghouat,Oum El Bouaghi,Batna,Béjaïa,Biskra,Béchar,Bli
 const wOpts = () => '<option value="">الولاية</option>' + W.map((n, i) => `<option value="${i + 1}">${i + 1} - ${n}</option>`).join('');
 let I = [];
 let CART = [];
+let STORE_CATS = [], STORE_CAT = '', STORE_Q = '';
 const saveCart = () => { try { localStorage['cart_' + slug] = JSON.stringify(CART); } catch (e) {} };
 const cartBadge = () => { const b = $('#cb'); if (b) b.textContent = CART.reduce((s, l) => s + l.qty, 0); };
 async function upd() {
@@ -162,7 +166,7 @@ function cp(id) {
 function saveP(id) {
   const g = k => val(k + id), p = id === 'new' ? null : D.products.find(x => x.id === id);
   const unch = (k, orig) => { const el = $('#' + k + id); return p && orig && +g('a') === +p.pairs && el.value === el.dataset.o ? +orig : Math.round(g('a') * g(k) * 100) / 100; };   // خانة ما تبدّلتش = السعر الأصلي (بلا تقريب)
-  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: unch('w', p && p.wholesale), buy: unch('b', p && p.buy), stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u});
+  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: unch('w', p && p.wholesale), buy: unch('b', p && p.buy), stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u, categoryId: val('cat' + id)});
 }
 const imHtml = (id, a) => a.map((u, i) => `<div class="th1"><img src="${esc(u)}"><button onclick="rmIm('${id}',${i})">✕</button>${i ? `<button class="cv" onclick="coverIm('${id}',${i})">★ غلاف</button>` : '<em>الغلاف</em>'}</div>`).join('');
 const imSet = (id, f) => { const el = $('#im' + id), a = JSON.parse(el.dataset.u || '[]'); f(a); el.dataset.u = JSON.stringify(a); el.innerHTML = imHtml(id, a); };
@@ -241,18 +245,26 @@ if (slug) store(); else if (!S) login(); else dash();
 
 async function store() {
   document.documentElement.dataset.theme = 'light'; app.innerHTML = '<p style="padding:30px">…</p>';
-  const d = await api('store', {slug}); I = d.items; document.title = d.shop;
+  const d = await api('store', {slug}); I = d.items || []; STORE_CATS = d.categories || []; STORE_CAT = ''; STORE_Q = ''; document.title = d.shop;
   try { CART = JSON.parse(localStorage['cart_' + slug] || '[]'); } catch (e) { CART = []; }
   if (d.color) document.documentElement.style.setProperty('--acc', d.color);
   app.innerHTML = `<div class="st"><div class="an">🚚 توصيل لـ 58 ولاية — الدفع عند الاستلام</div>
   <header class="sh"><div class="bx">${d.logo ? `<img src="${esc(d.logo)}">` : ''}<b>${esc(d.shop)}</b></div><button class="btn s" onclick="trackBox()">تتبع طلبك</button></header>
   <div class="hero" ${d.banner ? `style="background-image:linear-gradient(#0006,#0006),url('${esc(d.banner)}')"` : ''}><h1>${esc(d.shop)}</h1><p>أحذية بالجملة — اطلب بالكرطون</p></div>
-  <div class="pgrid">${I.map(p => `<div class="pc" onclick="openP('${p.id}')">${imL(p)[0] ? `<img src="${esc(imL(p)[0])}">` : noImg}<div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون · ${num(p.price / Math.max(1, p.pairs))} دج للزوج</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div><button class="btn t">اطلب الآن</button></div></div>`).join('') || '<p>قريبا…</p>'}</div>
+  <section class="store-tools"><input id="storeSearch" type="search" placeholder="🔍 ابحث عن منتج أو موديل…" oninput="STORE_Q=this.value;renderStoreProducts()"><div id="storeCats" class="store-cats"></div></section>
+  <div id="storeProducts" class="pgrid"></div>
   ${d.wa ? `<a class="wa" href="https://wa.me/${esc(d.wa)}" target="_blank">واتساب</a>` : ''}<footer>© ${esc(d.shop)}</footer></div><button class="ct" onclick="openCart()">🛒 <span id="cb">0</span></button><div id="mo"></div>`;
-  cartBadge();
+  renderStoreProducts(); cartBadge();
+}
+function renderStoreProducts() {
+  const cats = $('#storeCats'), grid = $('#storeProducts'); if (!cats || !grid) return;
+  cats.innerHTML = `<button class="cat-chip ${!STORE_CAT?'active':''}" onclick="STORE_CAT='';renderStoreProducts()">الكل</button>` + STORE_CATS.map(c => `<button class="cat-chip ${STORE_CAT===c.id?'active':''}" onclick="STORE_CAT='${c.id}';renderStoreProducts()">${esc(c.name)}</button>`).join('');
+  const q = String(STORE_Q || '').trim().toLocaleLowerCase();
+  const list = I.filter(p => (!STORE_CAT || p.categoryId === STORE_CAT) && (!q || String(p.name||'').toLocaleLowerCase().includes(q) || String(p.desc||'').toLocaleLowerCase().includes(q)));
+  grid.innerHTML = list.map(p => { const sold = +p.stock <= 0; return `<div class="pc ${sold?'sold-out':''}" ${sold?'':'onclick="openP(\''+p.id+'\')"'}>${imL(p)[0] ? `<img src="${esc(imL(p)[0])}">` : noImg}<div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون · ${num(p.price / Math.max(1, p.pairs))} دج للزوج</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div>${sold ? '<span class="sold-label">نفذت الكمية</span>' : '<button class="btn t">اطلب الآن</button>'}</div></div>`; }).join('') || '<p class="mut" style="grid-column:1/-1;text-align:center">ما لقيناش منتجات في هذا الاختيار.</p>';
 }
 function openP(id) {
-  const p = I.find(x => x.id === id), ims = imL(p);
+  const p = I.find(x => x.id === id); if (!p || +p.stock <= 0) return toast('نفذت الكمية من هذا المنتج حاليا'); const ims = imL(p);
   $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button>
   ${ims[0] ? `<img id="mi" class="mi" src="${esc(ims[0])}">` : noImg}<div class="th">${ims.map(u => `<img src="${esc(u)}" onclick="$('#mi').src=this.src">`).join('')}</div>
   <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون · سعر الزوج ${num(p.price / Math.max(1, p.pairs))} دج ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
@@ -261,14 +273,17 @@ function openP(id) {
   <button class="btn t" style="width:100%" onclick="addCart('${p.id}')">🛒 أضف للسلة</button></div></div>`;
 }
 function addCart(id) {
-  const p = I.find(x => x.id === id), q = Math.max(1, +val('q') || 1), l = CART.find(x => x.id === id), t = Math.min(p.stock, (l ? l.qty : 0) + q);
+  const p = I.find(x => x.id === id); if (!p || +p.stock <= 0) return toast('نفذت الكمية من هذا المنتج'); const q = Math.max(1, +val('q') || 1), l = CART.find(x => x.id === id), t = Math.min(p.stock, (l ? l.qty : 0) + q);
   if (l) { l.qty = t; l.stock = p.stock; } else CART.push({id, name: p.name, price: p.price, img: imL(p)[0] || '', qty: t, stock: p.stock});
   saveCart(); cartBadge(); $('#mo').innerHTML = ''; toast('أضيف للسلة ✔');
 }
-const cartLines = () => CART.map((l, i) => { const p = I.find(x => x.id === l.id); return `<div class="cl">${l.img ? `<img src="${esc(l.img)}">` : '<div class="noimg" style="width:56px;height:56px;font-size:24px">👟</div>'}<div style="flex:1"><b>${esc(l.name)}</b><br><small class="mut">${num(l.price)} دج / كرطون · ${num(l.price / Math.max(1, p ? p.pairs : 1))} دج للزوج</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`; }).join('') || '<p class="mut">السلة فارغة.</p>';
+const cartLines = () => CART.map((l, i) => { const p = I.find(x => x.id === l.id), sold = !p || +p.stock <= 0; return `<div class="cl">${l.img ? `<img src="${esc(l.img)}">` : '<div class="noimg" style="width:56px;height:56px;font-size:24px">👟</div>'}<div style="flex:1"><b>${esc(l.name)}</b>${sold ? '<br><small class="neg">نفذت الكمية — احذف المنتج من السلة</small>' : ''}<br><small class="mut">${num(l.price)} دج / كرطون · ${num(l.price / Math.max(1, p ? p.pairs : 1))} دج للزوج</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`; }).join('') || '<p class="mut">السلة فارغة.</p>';
 function cartQty(i, d) {
-  const l = CART[i]; l.qty += d;
-  if (l.qty < 1) CART.splice(i, 1); else if (l.qty > l.stock) { l.qty = l.stock; toast('الستوك المتوفر: ' + l.stock); }
+  const l = CART[i], p = I.find(x => x.id === l.id), available = p ? Math.max(0,+p.stock||0) : 0;
+  if (d > 0 && available <= 0) return toast('نفذت الكمية من هذا المنتج');
+  l.stock = available; l.qty += d;
+  if (l.qty < 1) CART.splice(i, 1); else if (l.qty > available) { l.qty = available; toast('الستوك المتوفر: ' + available); }
+  if (l.qty <= 0) CART = CART.filter(x=>x.id!==l.id);
   saveCart(); cartBadge(); if (CART.length) { $('#cl').innerHTML = cartLines(); upd(); } else openCart();
 }
 function openCart() {
@@ -283,6 +298,8 @@ function openCart() {
 }
 async function sendOrder() {
   if (!CART.length) return toast('السلة فارغة');
+  const unavailable = CART.find(l => { const p = I.find(x => x.id === l.id); return !p || +p.stock <= 0 || +l.qty > +p.stock; });
+  if (unavailable) return toast('المنتج ' + unavailable.name + ' نفذت كميته أو الكمية المطلوبة غير متوفرة؛ حدّث السلة');
   const ph = dzPhone(val('ph')); if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (مثال: 0550123456)');
   const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), ref: wref, singleParcel: !!$('#csingle').checked, customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
   CART = []; saveCart(); cartBadge();
@@ -513,8 +530,9 @@ const pform = (p, id) => `<div id="im${id}" class="ims" data-u="${esc(JSON.strin
       <div class="row"><input id="b${id}" type="number" step="0.01" placeholder="سعر شرائك للزوج (تكلفتك)" value="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" data-o="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" oninput="cp('${id}')"></div>
       <div class="row"><input id="s${id}" type="number" placeholder="الستوك (كراطن)" value="${p.stock ?? ''}"><input id="k${id}" type="number" step="0.1" placeholder="وزن الكرطون كغ" value="${p.weight || ''}"></div>
       <div class="row"><input id="d${id}" placeholder="وصف قصير (المقاسات، الألوان…)" value="${esc(p.desc || '')}"></div>
+      <div class="row"><select id="cat${id}"><option value="">بدون فئة</option>${(D.categories||[]).map(c=>`<option value="${c.id}" ${p.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
       ${p.id && D.sellers.length ? `<details><summary>💰 أسعار بيع خاصة لكل بائع (للزوج)</summary><p class="mut">اترك الخانة فارغة ليستعمل البائع السعر الافتراضي (${pairP(p)} للزوج). يخص الطلبات الجديدة فقط.</p><div class="row">${D.sellers.map(s => { const sp = (D.sellerPrices || []).find(x => x.seller === s.id && x.productId === p.id); return `<label class="mut">${esc(s.name)}<input id="sp${p.id}_${s.id}" type="number" step="0.01" placeholder="${pairP(p)}" value="${sp && p.pairs ? Math.round(sp.wholesale / p.pairs * 100) / 100 : ''}" data-o="${sp && p.pairs ? Math.round(sp.wholesale / p.pairs * 100) / 100 : ''}"></label>`; }).join('')}</div><button class="btn s" onclick="saveSP('${p.id}')">حفظ أسعار البائعين</button></details>` : ''}
-      <p>سعر الكرطون للبائع = <b id="cp${id}">${num(p.wholesale)}</b> دج — ربحك في الكرطون: <b id="mg${id}" class="${pn(p.wholesale - p.buy)}">${p.buy ? num(p.wholesale - p.buy) : '—'}</b> دج</p><button class="btn t" onclick="saveP('${id}')">${p.id ? 'حفظ' : 'زيد المنتج'}</button> ${p.id ? `<button class="btn s" onclick="act('toggleProduct',{id:'${p.id}',hidden:${p.hidden ? 0 : 1}})">${p.hidden ? '👁 أظهره للبائعين' : '🙈 أخفه عن البائعين'}</button>${p.hidden ? ' <span class="tag cancelled">مخفي عن البائعين</span>' : ''}` : ''}`;
+      <p>سعر الكرطون للبائع = <b id="cp${id}">${num(p.wholesale)}</b> دج — ربحك في الكرطون: <b id="mg${id}" class="${pn(p.wholesale - p.buy)}">${p.buy ? num(p.wholesale - p.buy) : '—'}</b> دج</p><button class="btn t" onclick="saveP('${id}')">${p.id ? 'حفظ' : 'زيد المنتج'}</button> ${p.id ? `<button class="btn s" onclick="act('toggleProduct',{id:'${p.id}',hidden:${p.hidden ? 0 : 1}})">${p.hidden ? '👁 أظهره للبائعين' : '🙈 أخفه عن البائعين'}</button>${p.hidden ? ' <span class="tag cancelled">مخفي عن البائعين</span>' : ''} <button class="btn s" onclick="deleteProductUI('${p.id}')">🗑 حذف المنتج</button>` : ''}`;
 function sRow(p) {                      // سطر منتج عند البائع: سعر بيع بالزوج + ربح مباشر + مفتاح الظهور
   const pr = D.prices.find(x => x.productId === p.id), sp = pr && p.pairs ? Math.round(pr.price / p.pairs * 100) / 100 : '', mg = pr ? Math.round((pr.price - p.wholesale) * 100) / 100 : null;
   return `<div class="prow" id="row${p.id}">${pthumb(p)}<div class="pmain"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون</small>${stBadge(p.stock)}</div>
@@ -530,9 +548,13 @@ function aRow(p) {                      // سطر منتج عند الأدمين
   <div class="pvis"><label class="sw"><input type="checkbox" ${p.hidden ? '' : 'checked'} onchange="togProd('${p.id}',this.checked)"><span></span></label><small class="mut">ظاهر للبائعين</small></div>
   <div class="pact"><button class="btn s" onclick="editProduct('${p.id}')">✏️ تعديل</button></div></div>`;
 }
+async function deleteProductUI(id) { if (!confirm('حذف هذا المنتج نهائيا؟ إذا كان مرتبطا بطلب مفتوح سيرفض النظام الحذف.')) return; await act('deleteProduct',{id}); }
+async function addCategoryUI() { const name=val('newCategory').trim(); if(!name) return toast('اكتب اسم الفئة'); await act('saveCategory',{name}); }
+async function deleteCategoryUI(id) { const c=(D.categories||[]).find(x=>x.id===id); if(!confirm('حذف الفئة «'+(c?c.name:'')+'»؟ المنتجات التابعة لها ستبقى بدون فئة.')) return; await act('deleteCategory',{id}); }
+function categoryManager() { return `<div class="card"><h3>📂 فئات المنتجات</h3><div class="row"><input id="newCategory" placeholder="اسم الفئة الجديدة"><button class="btn t" onclick="addCategoryUI()">＋ إضافة فئة</button></div><div class="store-cats">${(D.categories||[]).map(c=>`<span class="cat-chip">${esc(c.name)} <button onclick="deleteCategoryUI('${c.id}')" title="حذف الفئة">✕</button></span>`).join('') || '<small class="mut">مازال ما ضفت حتى فئة.</small>'}</div></div>`; }
 function stockRows() {
-  const q = SQ.trim().toLowerCase(), adm = S.role === 'admin';
-  const L = D.products.filter(p => { const pr = D.prices.find(x => x.productId === p.id); return (!q || p.name.toLowerCase().includes(q)) && (!SF || (SF === 'out' && +p.stock <= 0) || (SF === 'low' && +p.stock > 0 && +p.stock <= 3) || (SF === 'in' && +p.stock > 0) || (SF === 'hid' && (adm ? p.hidden : pr && pr.hidden)) || (SF === 'nobuy' && !p.buy) || (SF === 'noprice' && !pr)); });
+  const q = String(SQ || '').trim().toLocaleLowerCase(), adm = S.role === 'admin';
+  const L = D.products.filter(p => { const pr = D.prices.find(x => x.productId === p.id); return (!q || String(p.name || '').toLocaleLowerCase().includes(q)) && (!SF || (SF === 'out' && +p.stock <= 0) || (SF === 'low' && +p.stock > 0 && +p.stock <= 3) || (SF === 'in' && +p.stock > 0) || (SF === 'hid' && (adm ? p.hidden : pr && pr.hidden)) || (SF === 'nobuy' && !p.buy) || (SF === 'noprice' && !pr)); });
   return L.map(adm ? aRow : sRow).join('') || '<p class="mut">ما كاين منتجات.</p>';
 }
 const stockFilter = () => { const e = $('#plist'); if (e) e.innerHTML = stockRows(); };
@@ -745,7 +767,7 @@ const V = {
   },
   stock() {
     const adm = S.role === 'admin', opt = (v, t) => `<option value="${v}" ${SF === v ? 'selected' : ''}>${t}</option>`;
-    return `<div class="card pb"><input placeholder="🔍 بحث عن منتج…" value="${esc(SQ)}" oninput="SQ=this.value;stockFilter()"><select onchange="SF=this.value;stockFilter()">${adm ? opt('', 'كل المنتجات') + opt('out', 'نفد') + opt('low', 'قليل (3 أو أقل)') + opt('hid', 'مخفي عن البائعين') + opt('nobuy', 'بلا سعر شراء') : opt('', 'كل المنتجات') + opt('in', 'متوفر') + opt('out', 'نفد') + opt('hid', 'مخفي من متجري') + opt('noprice', 'بلا سعر بيع')}</select>${adm ? '<button class="btn t" onclick="editProduct(\'new\')">＋ منتج جديد</button>' : ''}</div>
+    return `${adm ? categoryManager() : ''}<div class="card pb"><input id="stockSearch" type="search" placeholder="🔍 بحث عن منتج…" value="${esc(SQ)}" oninput="SQ=this.value;stockFilter()"><select onchange="SF=this.value;stockFilter()">${adm ? opt('', 'كل المنتجات') + opt('out', 'نفد') + opt('low', 'قليل (3 أو أقل)') + opt('hid', 'مخفي عن البائعين') + opt('nobuy', 'بلا سعر شراء') : opt('', 'كل المنتجات') + opt('in', 'متوفر') + opt('out', 'نفد') + opt('hid', 'مخفي من متجري') + opt('noprice', 'بلا سعر بيع')}</select>${adm ? '<button class="btn t" onclick="editProduct(\'new\')">＋ منتج جديد</button>' : ''}</div>
     <p class="mut hint">${adm ? 'عدّل الستوك مباشرة بالأزرار + و −، وأخفِ/أظهر المنتج بالمفتاح. زر «تعديل» يفتح الصور والأسعار وأسعار كل بائع.' : 'اكتب سعر بيعك للزوج: يتحفظ تلقائيا ويظهر ربحك في الكرطون (أخضر/أحمر). فعّل «ظاهر في متجري» لإظهار المنتج لزبائنك.'}</p>
     <div class="plist" id="plist">${stockRows()}</div>`;
   },
