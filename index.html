@@ -110,6 +110,9 @@ details{margin:8px 0}summary{cursor:pointer;font-weight:700;color:var(--acc)}
 .sw span:before{content:'';position:absolute;width:20px;height:20px;top:3px;inset-inline-start:3px;background:#fff;border-radius:50%;transition:.2s}.sw input:checked+span{background:var(--ok)}.sw input:checked+span:before{inset-inline-start:23px}.sw input:disabled+span{opacity:.4;cursor:not-allowed}
 .ov .card .card{border:0;padding:0;margin:0;background:none}
 @media(max-width:1000px){.prow,.prow.arow{grid-template-columns:64px 1fr}.pcost,.psell,.pstk,.pact{grid-column:1/-1}.pvis{grid-column:1/-1;flex-direction:row;align-items:center;gap:10px}.pact .btn{width:100%}.stk input{flex:1}}
+
+.store-tools{max-width:1200px;margin:18px auto;padding:0 14px}.store-tools input{width:100%;padding:14px;border:1px solid var(--line);border-radius:12px;font:inherit;margin-bottom:12px}.store-cats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.cat-chip{border:1px solid var(--line);background:var(--card2);color:inherit;border-radius:999px;padding:8px 14px;font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:8px}.cat-chip.active{background:var(--acc);color:#111;border-color:var(--acc)}.sold-out{opacity:.82;cursor:default!important}.sold-label{display:inline-block;background:#fee2e2;color:#991b1b;padding:7px 12px;border-radius:8px;font-weight:800;margin-top:8px}.sold-out>img{filter:grayscale(.8)}
+
 </style>
 </head>
 <body>
@@ -124,10 +127,11 @@ const W = "Adrar,Chlef,Laghouat,Oum El Bouaghi,Batna,Béjaïa,Biskra,Béchar,Bli
 const wOpts = () => '<option value="">الولاية</option>' + W.map((n, i) => `<option value="${i + 1}">${i + 1} - ${n}</option>`).join('');
 let I = [];
 let CART = [];
+let STORE_CATS = [], STORE_CAT = '', STORE_Q = '';
 const saveCart = () => { try { localStorage['cart_' + slug] = JSON.stringify(CART); } catch (e) {} };
 const cartBadge = () => { const b = $('#cb'); if (b) b.textContent = CART.reduce((s, l) => s + l.qty, 0); };
 async function upd() {
-  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), parcels = CART.reduce((s, l) => s + l.qty, 0);
+  const sub = CART.reduce((s, l) => s + l.price * l.qty, 0), cartons = CART.reduce((s, l) => s + l.qty, 0), parcels = $('#csingle') && $('#csingle').checked ? Math.ceil(cartons / 2) : cartons;
   const fee = val('w') ? (await api('quote', {slug, wilaya: val('w'), stopDesk: val('dm')})).fee : 0;
   $('#tot').innerHTML = `المنتجات: ${num(sub)} دج<br>التوصيل (${parcels} طرد × ${num(fee)}): ${val('w') ? num(fee * parcels) + ' دج' : 'اختار الولاية'}<br><b>المجموع عند الاستلام: ${num(sub + fee * parcels)} دج</b>`;
 }
@@ -162,7 +166,7 @@ function cp(id) {
 function saveP(id) {
   const g = k => val(k + id), p = id === 'new' ? null : D.products.find(x => x.id === id);
   const unch = (k, orig) => { const el = $('#' + k + id); return p && orig && +g('a') === +p.pairs && el.value === el.dataset.o ? +orig : Math.round(g('a') * g(k) * 100) / 100; };   // خانة ما تبدّلتش = السعر الأصلي (بلا تقريب)
-  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: unch('w', p && p.wholesale), buy: unch('b', p && p.buy), stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u});
+  act('saveProduct', {id: id === 'new' ? '' : id, name: g('n'), pairs: g('a'), wholesale: unch('w', p && p.wholesale), buy: unch('b', p && p.buy), stock: g('s'), weight: g('k'), desc: g('d'), images: $('#im' + id).dataset.u, categoryId: val('cat' + id)});
 }
 const imHtml = (id, a) => a.map((u, i) => `<div class="th1"><img src="${esc(u)}"><button onclick="rmIm('${id}',${i})">✕</button>${i ? `<button class="cv" onclick="coverIm('${id}',${i})">★ غلاف</button>` : '<em>الغلاف</em>'}</div>`).join('');
 const imSet = (id, f) => { const el = $('#im' + id), a = JSON.parse(el.dataset.u || '[]'); f(a); el.dataset.u = JSON.stringify(a); el.innerHTML = imHtml(id, a); };
@@ -201,7 +205,7 @@ async function camScan() {
 async function label(id) {
   const r = await api('label', {orderId: id}), o = D.orders.find(x => x.id === id);
   let out = Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0));
-  if (+o.qty > 1 && window.PDFLib) {                       // نسخة لكل كرطون + ترقيم 1/2 و 2/2
+  if (+o.qty > 1 && !+o.oneParcel && window.PDFLib) {    // الطلبات القديمة/المنفصلة: نسخة لكل طرد
     const {PDFDocument, StandardFonts} = PDFLib, src = await PDFDocument.load(out), doc = await PDFDocument.create(), f = await doc.embedFont(StandardFonts.HelveticaBold);
     for (let i = 1; i <= +o.qty; i++) { const [pg] = await doc.copyPages(src, [0]); doc.addPage(pg); pg.drawText(i + '/' + o.qty, {x: 8, y: pg.getHeight() - 22, size: 16, font: f}); }
     out = await doc.save();
@@ -209,8 +213,6 @@ async function label(id) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], {type: 'application/pdf'})); a.download = r.name; a.click();
 }
 let S = JSON.parse(sessionStorage.me || 'null'), D = {}, tab = '';
-let POS_CART = [];
-
 
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',3500)}
 const BZ = [0, 0];
@@ -243,38 +245,51 @@ if (slug) store(); else if (!S) login(); else dash();
 
 async function store() {
   document.documentElement.dataset.theme = 'light'; app.innerHTML = '<p style="padding:30px">…</p>';
-  const d = await api('store', {slug}); I = d.items; document.title = d.shop;
+  const d = await api('store', {slug}); I = d.items || []; STORE_CATS = d.categories || []; STORE_CAT = ''; STORE_Q = ''; document.title = d.shop;
   try { CART = JSON.parse(localStorage['cart_' + slug] || '[]'); } catch (e) { CART = []; }
   if (d.color) document.documentElement.style.setProperty('--acc', d.color);
   app.innerHTML = `<div class="st"><div class="an">🚚 توصيل لـ 58 ولاية — الدفع عند الاستلام</div>
   <header class="sh"><div class="bx">${d.logo ? `<img src="${esc(d.logo)}">` : ''}<b>${esc(d.shop)}</b></div><button class="btn s" onclick="trackBox()">تتبع طلبك</button></header>
   <div class="hero" ${d.banner ? `style="background-image:linear-gradient(#0006,#0006),url('${esc(d.banner)}')"` : ''}><h1>${esc(d.shop)}</h1><p>أحذية بالجملة — اطلب بالكرطون</p></div>
-  <div class="pgrid">${I.map(p => `<div class="pc" onclick="openP('${p.id}')">${imL(p)[0] ? `<img src="${esc(imL(p)[0])}">` : noImg}<div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div><button class="btn t">اطلب الآن</button></div></div>`).join('') || '<p>قريبا…</p>'}</div>
+  <section class="store-tools"><input id="storeSearch" type="search" placeholder="🔍 ابحث عن منتج أو موديل…" oninput="STORE_Q=this.value;renderStoreProducts()"><div id="storeCats" class="store-cats"></div></section>
+  <div id="storeProducts" class="pgrid"></div>
   ${d.wa ? `<a class="wa" href="https://wa.me/${esc(d.wa)}" target="_blank">واتساب</a>` : ''}<footer>© ${esc(d.shop)}</footer></div><button class="ct" onclick="openCart()">🛒 <span id="cb">0</span></button><div id="mo"></div>`;
-  cartBadge();
+  renderStoreProducts(); cartBadge();
+}
+function renderStoreProducts() {
+  const cats = $('#storeCats'), grid = $('#storeProducts'); if (!cats || !grid) return;
+  cats.innerHTML = `<button class="cat-chip ${!STORE_CAT?'active':''}" onclick="STORE_CAT='';renderStoreProducts()">الكل</button>` + STORE_CATS.map(c => `<button class="cat-chip ${STORE_CAT===c.id?'active':''}" onclick="STORE_CAT='${c.id}';renderStoreProducts()">${esc(c.name)}</button>`).join('');
+  const q = String(STORE_Q || '').trim().toLocaleLowerCase();
+  const list = I.filter(p => (!STORE_CAT || p.categoryId === STORE_CAT) && (!q || String(p.name||'').toLocaleLowerCase().includes(q) || String(p.desc||'').toLocaleLowerCase().includes(q)));
+  grid.innerHTML = list.map(p => { const sold = +p.stock <= 0; return `<div class="pc ${sold?'sold-out':''}" ${sold?'':'onclick="openP(\''+p.id+'\')"'}>${imL(p)[0] ? `<img src="${esc(imL(p)[0])}">` : noImg}<div class="pi"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون · ${num(p.price / Math.max(1, p.pairs))} دج للزوج</small><div class="pr">${num(p.price)} دج <small class="mut">/ كرطون</small></div>${sold ? '<span class="sold-label">نفذت الكمية</span>' : '<button class="btn t">اطلب الآن</button>'}</div></div>`; }).join('') || '<p class="mut" style="grid-column:1/-1;text-align:center">ما لقيناش منتجات في هذا الاختيار.</p>';
 }
 function openP(id) {
-  const p = I.find(x => x.id === id), ims = imL(p);
+  const p = I.find(x => x.id === id); if (!p || +p.stock <= 0) return toast('نفذت الكمية من هذا المنتج حاليا'); const ims = imL(p);
   $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button>
   ${ims[0] ? `<img id="mi" class="mi" src="${esc(ims[0])}">` : noImg}<div class="th">${ims.map(u => `<img src="${esc(u)}" onclick="$('#mi').src=this.src">`).join('')}</div>
-  <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
-  <p class="mut">كل كرطون = طرد مستقل (التوصيل يتحسب على كل كرطون).</p>
+  <h2>${esc(p.name)}</h2><p class="mut">${p.pairs} زوج في الكرطون · سعر الزوج ${num(p.price / Math.max(1, p.pairs))} دج ${esc(p.desc || '')}</p><h3 style="color:var(--acc)">${num(p.price)} دج / كرطون</h3>
+  <p class="mut">اختار طريقة تجميع الكراطن في السلة قبل تأكيد الطلب.</p>
   <div class="row"><input id="q" type="number" min="1" max="${p.stock}" value="1" placeholder="عدد الكراطن"></div>
   <button class="btn t" style="width:100%" onclick="addCart('${p.id}')">🛒 أضف للسلة</button></div></div>`;
 }
 function addCart(id) {
-  const p = I.find(x => x.id === id), q = Math.max(1, +val('q') || 1), l = CART.find(x => x.id === id), t = Math.min(p.stock, (l ? l.qty : 0) + q);
+  const p = I.find(x => x.id === id); if (!p || +p.stock <= 0) return toast('نفذت الكمية من هذا المنتج'); const q = Math.max(1, +val('q') || 1), l = CART.find(x => x.id === id), t = Math.min(p.stock, (l ? l.qty : 0) + q);
   if (l) { l.qty = t; l.stock = p.stock; } else CART.push({id, name: p.name, price: p.price, img: imL(p)[0] || '', qty: t, stock: p.stock});
   saveCart(); cartBadge(); $('#mo').innerHTML = ''; toast('أضيف للسلة ✔');
 }
-const cartLines = () => CART.map((l, i) => `<div class="cl">${l.img ? `<img src="${esc(l.img)}">` : '<div class="noimg" style="width:56px;height:56px;font-size:24px">👟</div>'}<div style="flex:1"><b>${esc(l.name)}</b><br><small class="mut">${num(l.price)} دج / كرطون</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`).join('') || '<p class="mut">السلة فارغة.</p>';
+const cartLines = () => CART.map((l, i) => { const p = I.find(x => x.id === l.id), sold = !p || +p.stock <= 0; return `<div class="cl">${l.img ? `<img src="${esc(l.img)}">` : '<div class="noimg" style="width:56px;height:56px;font-size:24px">👟</div>'}<div style="flex:1"><b>${esc(l.name)}</b>${sold ? '<br><small class="neg">نفذت الكمية — احذف المنتج من السلة</small>' : ''}<br><small class="mut">${num(l.price)} دج / كرطون · ${num(l.price / Math.max(1, p ? p.pairs : 1))} دج للزوج</small></div><div class="qs"><button onclick="cartQty(${i},-1)">−</button><b>${l.qty}</b><button onclick="cartQty(${i},1)">+</button></div></div>`; }).join('') || '<p class="mut">السلة فارغة.</p>';
 function cartQty(i, d) {
-  const l = CART[i]; l.qty += d;
-  if (l.qty < 1) CART.splice(i, 1); else if (l.qty > l.stock) { l.qty = l.stock; toast('الستوك المتوفر: ' + l.stock); }
+  const l = CART[i], p = I.find(x => x.id === l.id), available = p ? Math.max(0,+p.stock||0) : 0;
+  if (d > 0 && available <= 0) return toast('نفذت الكمية من هذا المنتج');
+  l.stock = available; l.qty += d;
+  if (l.qty < 1) CART.splice(i, 1); else if (l.qty > available) { l.qty = available; toast('الستوك المتوفر: ' + available); }
+  if (l.qty <= 0) CART = CART.filter(x=>x.id!==l.id);
   saveCart(); cartBadge(); if (CART.length) { $('#cl').innerHTML = cartLines(); upd(); } else openCart();
 }
 function openCart() {
-  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">كل كرطون = طرد مستقل، والتوصيل يتحسب على كل كرطون.</p>
+  $('#mo').innerHTML = `<div class="ov"><div class="card pm"><button class="btn s" onclick="$('#mo').innerHTML=''">✕ إغلاق</button><h2>🛒 سلتي</h2><div id="cl">${cartLines()}</div><p class="mut">اختار كيفاش تحب يتسجل الطلب:</p>
+  <label style="display:flex;gap:9px;align-items:center;padding:10px;background:var(--card2);border-radius:10px;margin:8px 0"><input id="csingle" type="checkbox" checked onchange="upd()" style="width:19px;height:19px"><span>كل زوج كراطن في طرد واحد (Tracking واحد لكل زوج)</span></label>
+  <p class="mut">إذا ما فعلتش الخيار، كل كرطون يكون طرد وTracking مستقل. وإذا كان العدد فردي، الكرطون الأخير يكون طرد وحده.</p>
   ${CART.length ? `<div class="row"><input id="c" placeholder="الاسم الكامل"><input id="ph" type="tel" inputmode="tel" maxlength="16" placeholder="الهاتف (05 / 06 / 07…)"></div>
   <div class="row"><select id="dm" onchange="geo('w','cm','dm','st')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="w" onchange="geo('w','cm','dm','st')">${wOpts()}</select></div>
   <div class="row"><select id="cm"><option value="">البلدية</option></select><select id="st" style="display:none"><option value="">المكتب</option></select><input id="ad" placeholder="العنوان"></div>
@@ -283,8 +298,10 @@ function openCart() {
 }
 async function sendOrder() {
   if (!CART.length) return toast('السلة فارغة');
+  const unavailable = CART.find(l => { const p = I.find(x => x.id === l.id); return !p || +p.stock <= 0 || +l.qty > +p.stock; });
+  if (unavailable) return toast('المنتج ' + unavailable.name + ' نفذت كميته أو الكمية المطلوبة غير متوفرة؛ حدّث السلة');
   const ph = dzPhone(val('ph')); if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (مثال: 0550123456)');
-  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), ref: wref, customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
+  const r = await api('order', {slug, items: CART.map(l => ({productId: l.id, qty: l.qty})), ref: wref, singleParcel: !!$('#csingle').checked, customer: val('c'), phone: ph, wilaya: val('w'), commune: val('cm'), address: val('ad'), stopDesk: val('dm'), station: val('st')});
   CART = []; saveCart(); cartBadge();
   $('#mo .card').innerHTML = `<h2>تم تسجيل طلبك ✔</h2><p>رقم الطلب: <b>${r.id}</b><br>عدد الطرود: ${r.parcels} — رسوم التوصيل: ${num(r.fee)} دج<br>نتصلو بيك للتأكيد.</p>`;
 }
@@ -304,8 +321,8 @@ function logout() { sessionStorage.clear(); S = null; login(); }
 const TABS = {
   seller: [['stats','لوحة التحكم'],['orders','طلباتي'],['account','حسابي مع المورد'],['exp','مصاريف'],['stock','المخزون والأسعار'],['mystore','متجري'],['team','عمالي'],['fees','أسعار النقل'],['noest','Noest']],
   agent: [['orders','طلباتي'],['account','حسابي مع البائع']],
-  warehouse: [['pos','POS المحل'],['orders','الطلبات'],['ret','المرتجعات']],
-  admin: [['dash','لوحة التحكم'],['pos','POS المحل'],['orders','الطلبات'],['sellers','تتبع البائعين'],['ret','المرتجعات'],['stock','المنتجات والمخزون'],['exp','مصاريفي'],['users','المستخدمون']]
+  warehouse: [['orders','الطلبات'],['ret','المرتجعات']],
+  admin: [['dash','لوحة التحكم'],['orders','الطلبات'],['sellers','تتبع البائعين'],['ret','المرتجعات'],['stock','المنتجات والمخزون'],['exp','مصاريفي'],['users','المستخدمون']]
 };
 const isSel = () => S.role === 'seller' || S.role === 'agent';
 const dzPhone = p => { let d = String(p).replace(/\D/g, ''); if (d.startsWith('00213')) d = '0' + d.slice(5); else if (d.startsWith('213') && d.length === 12) d = '0' + d.slice(3); else if (d.length === 9 && /^[567]/.test(d)) d = '0' + d; return /^0[567]\d{8}$/.test(d) ? d : ''; };
@@ -513,8 +530,9 @@ const pform = (p, id) => `<div id="im${id}" class="ims" data-u="${esc(JSON.strin
       <div class="row"><input id="b${id}" type="number" step="0.01" placeholder="سعر شرائك للزوج (تكلفتك)" value="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" data-o="${p.pairs && p.buy ? Math.round(p.buy / p.pairs * 100) / 100 : ''}" oninput="cp('${id}')"></div>
       <div class="row"><input id="s${id}" type="number" placeholder="الستوك (كراطن)" value="${p.stock ?? ''}"><input id="k${id}" type="number" step="0.1" placeholder="وزن الكرطون كغ" value="${p.weight || ''}"></div>
       <div class="row"><input id="d${id}" placeholder="وصف قصير (المقاسات، الألوان…)" value="${esc(p.desc || '')}"></div>
+      <div class="row"><select id="cat${id}"><option value="">بدون فئة</option>${(D.categories||[]).map(c=>`<option value="${c.id}" ${p.categoryId===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
       ${p.id && D.sellers.length ? `<details><summary>💰 أسعار بيع خاصة لكل بائع (للزوج)</summary><p class="mut">اترك الخانة فارغة ليستعمل البائع السعر الافتراضي (${pairP(p)} للزوج). يخص الطلبات الجديدة فقط.</p><div class="row">${D.sellers.map(s => { const sp = (D.sellerPrices || []).find(x => x.seller === s.id && x.productId === p.id); return `<label class="mut">${esc(s.name)}<input id="sp${p.id}_${s.id}" type="number" step="0.01" placeholder="${pairP(p)}" value="${sp && p.pairs ? Math.round(sp.wholesale / p.pairs * 100) / 100 : ''}" data-o="${sp && p.pairs ? Math.round(sp.wholesale / p.pairs * 100) / 100 : ''}"></label>`; }).join('')}</div><button class="btn s" onclick="saveSP('${p.id}')">حفظ أسعار البائعين</button></details>` : ''}
-      <p>سعر الكرطون للبائع = <b id="cp${id}">${num(p.wholesale)}</b> دج — ربحك في الكرطون: <b id="mg${id}" class="${pn(p.wholesale - p.buy)}">${p.buy ? num(p.wholesale - p.buy) : '—'}</b> دج</p><button class="btn t" onclick="saveP('${id}')">${p.id ? 'حفظ' : 'زيد المنتج'}</button> ${p.id ? `<button class="btn s" onclick="act('toggleProduct',{id:'${p.id}',hidden:${p.hidden ? 0 : 1}})">${p.hidden ? '👁 أظهره للبائعين' : '🙈 أخفه عن البائعين'}</button>${p.hidden ? ' <span class="tag cancelled">مخفي عن البائعين</span>' : ''}` : ''}`;
+      <p>سعر الكرطون للبائع = <b id="cp${id}">${num(p.wholesale)}</b> دج — ربحك في الكرطون: <b id="mg${id}" class="${pn(p.wholesale - p.buy)}">${p.buy ? num(p.wholesale - p.buy) : '—'}</b> دج</p><button class="btn t" onclick="saveP('${id}')">${p.id ? 'حفظ' : 'زيد المنتج'}</button> ${p.id ? `<button class="btn s" onclick="act('toggleProduct',{id:'${p.id}',hidden:${p.hidden ? 0 : 1}})">${p.hidden ? '👁 أظهره للبائعين' : '🙈 أخفه عن البائعين'}</button>${p.hidden ? ' <span class="tag cancelled">مخفي عن البائعين</span>' : ''} <button class="btn s" onclick="deleteProductUI('${p.id}')">🗑 حذف المنتج</button>` : ''}`;
 function sRow(p) {                      // سطر منتج عند البائع: سعر بيع بالزوج + ربح مباشر + مفتاح الظهور
   const pr = D.prices.find(x => x.productId === p.id), sp = pr && p.pairs ? Math.round(pr.price / p.pairs * 100) / 100 : '', mg = pr ? Math.round((pr.price - p.wholesale) * 100) / 100 : null;
   return `<div class="prow" id="row${p.id}">${pthumb(p)}<div class="pmain"><b>${esc(p.name)}</b><small class="mut">${p.pairs} زوج في الكرطون</small>${stBadge(p.stock)}</div>
@@ -530,9 +548,13 @@ function aRow(p) {                      // سطر منتج عند الأدمين
   <div class="pvis"><label class="sw"><input type="checkbox" ${p.hidden ? '' : 'checked'} onchange="togProd('${p.id}',this.checked)"><span></span></label><small class="mut">ظاهر للبائعين</small></div>
   <div class="pact"><button class="btn s" onclick="editProduct('${p.id}')">✏️ تعديل</button></div></div>`;
 }
+async function deleteProductUI(id) { if (!confirm('حذف هذا المنتج نهائيا؟ إذا كان مرتبطا بطلب مفتوح سيرفض النظام الحذف.')) return; await act('deleteProduct',{id}); }
+async function addCategoryUI() { const name=val('newCategory').trim(); if(!name) return toast('اكتب اسم الفئة'); await act('saveCategory',{name}); }
+async function deleteCategoryUI(id) { const c=(D.categories||[]).find(x=>x.id===id); if(!confirm('حذف الفئة «'+(c?c.name:'')+'»؟ المنتجات التابعة لها ستبقى بدون فئة.')) return; await act('deleteCategory',{id}); }
+function categoryManager() { return `<div class="card"><h3>📂 فئات المنتجات</h3><div class="row"><input id="newCategory" placeholder="اسم الفئة الجديدة"><button class="btn t" onclick="addCategoryUI()">＋ إضافة فئة</button></div><div class="store-cats">${(D.categories||[]).map(c=>`<span class="cat-chip">${esc(c.name)} <button onclick="deleteCategoryUI('${c.id}')" title="حذف الفئة">✕</button></span>`).join('') || '<small class="mut">مازال ما ضفت حتى فئة.</small>'}</div></div>`; }
 function stockRows() {
-  const q = SQ.trim().toLowerCase(), adm = S.role === 'admin';
-  const L = D.products.filter(p => { const pr = D.prices.find(x => x.productId === p.id); return (!q || p.name.toLowerCase().includes(q)) && (!SF || (SF === 'out' && +p.stock <= 0) || (SF === 'low' && +p.stock > 0 && +p.stock <= 3) || (SF === 'in' && +p.stock > 0) || (SF === 'hid' && (adm ? p.hidden : pr && pr.hidden)) || (SF === 'nobuy' && !p.buy) || (SF === 'noprice' && !pr)); });
+  const q = String(SQ || '').trim().toLocaleLowerCase(), adm = S.role === 'admin';
+  const L = D.products.filter(p => { const pr = D.prices.find(x => x.productId === p.id); return (!q || String(p.name || '').toLocaleLowerCase().includes(q)) && (!SF || (SF === 'out' && +p.stock <= 0) || (SF === 'low' && +p.stock > 0 && +p.stock <= 3) || (SF === 'in' && +p.stock > 0) || (SF === 'hid' && (adm ? p.hidden : pr && pr.hidden)) || (SF === 'nobuy' && !p.buy) || (SF === 'noprice' && !pr)); });
   return L.map(adm ? aRow : sRow).join('') || '<p class="mut">ما كاين منتجات.</p>';
 }
 const stockFilter = () => { const e = $('#plist'); if (e) e.innerHTML = stockRows(); };
@@ -557,7 +579,7 @@ let SEL = new Set(), VIS = [];
 const wname = w => W[(+w) - 1] || w;
 function lineHtml(pfx, i, sid) {                 // سطر منتج + عدد كراطن (للطلب اليدوي وإضافة منتجات لطلب)
   const ps = D.products.filter(p => D.prices.some(x => x.productId === p.id && (!sid || x.seller === sid)));
-  return `<div class="row ln"><select id="${pfx}p${i}">${ps.map(p => { const pr = D.prices.find(x => x.productId === p.id && (!sid || x.seller === sid)); return `<option value="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>${esc(p.name)} — ${num(pr.price)} دج${p.stock <= 0 ? ' (نفد)' : ` (متوفر ${p.stock})`}</option>`; }).join('')}</select><input id="${pfx}q${i}" type="number" min="1" value="1" placeholder="كراطن"></div>`;
+  return `<div class="row ln"><select id="${pfx}p${i}">${ps.map(p => { const pr = D.prices.find(x => x.productId === p.id && (!sid || x.seller === sid)); return `<option value="${p.id}" ${p.stock <= 0 ? 'disabled' : ''}>${esc(p.name)} — ${num(pr.price)} دج/كرطون (${num(pr.price / Math.max(1, p.pairs))} دج/زوج)${p.stock <= 0 ? ' (نفد)' : ` (متوفر ${p.stock})`}</option>`; }).join('')}</select><input id="${pfx}q${i}" type="number" min="1" value="1" placeholder="كراطن"></div>`;
 }
 const getLines = pfx => [...document.querySelectorAll(`#${pfx}l .ln`)].map(r => ({productId: r.querySelector('select').value, qty: +r.querySelector('input').value || 0})).filter(x => x.productId && x.qty > 0);
 function addLine(pfx, sid) { const box = $('#' + pfx + 'l'); box.insertAdjacentHTML('beforeend', lineHtml(pfx, box.children.length, sid)); }
@@ -567,6 +589,10 @@ function newOrder() {
   <div class="row" style="margin-top:10px"><input id="mc" placeholder="اسم الزبون"><input id="mph" type="tel" inputmode="tel" placeholder="الهاتف (05 / 06 / 07…)"></div>
   <div class="row"><select id="mdm" onchange="geo('mw','mcm','mdm','mst')"><option value="0">توصيل للمنزل</option><option value="1">مكتب Stop Desk</option></select><select id="mw" onchange="geo('mw','mcm','mdm','mst')">${wOpts()}</select><select id="mcm"><option value="">البلدية</option></select><select id="mst" style="display:none"><option value="">المكتب</option></select></div>
   <div class="row"><input id="mad" placeholder="العنوان"><input id="mnt" placeholder="ملاحظة (اختياري)"></div>
+  <label style="display:flex;align-items:center;gap:9px;margin:10px 2px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;cursor:pointer">
+    <input id="msingle" type="checkbox" checked style="width:20px;height:20px;flex:none;accent-color:var(--acc)">
+    <span><b>كل زوج كراطن في طرد واحد</b><small class="mut" style="display:block">Tracking واحد لكل زوج، والكرطون الأخير وحده إذا كان العدد فردياً</small></span>
+  </label>
   <button class="btn t" onclick="submitManual()">تسجيل الطلب</button> <button class="btn" onclick="modal()">إلغاء</button>`, true);
 }
 async function submitManual() {
@@ -574,8 +600,8 @@ async function submitManual() {
   if (!items.length) return toast('اختار منتج وعدد الكراطن');
   if (!val('mc').trim()) return toast('اكتب اسم الزبون');
   if (!ph) return toast('رقم الهاتف غير صحيح — لازم رقم جزائري (05 / 06 / 07 + 8 أرقام)');
-  const r = await api('manualOrder', {items, customer: val('mc'), phone: ph, wilaya: val('mw'), commune: val('mcm'), address: val('mad'), stopDesk: val('mdm'), station: val('mst'), note: val('mnt')});
-  await dash(); popup('تم تسجيل الطلب ✔', `رقم الطلب: <b>${r.id}</b><br>${r.parcels} طرد — رسوم التوصيل ${num(r.fee)} دج`);
+  const r = await api('manualOrder', {items, customer: val('mc'), phone: ph, wilaya: val('mw'), commune: val('mcm'), address: val('mad'), stopDesk: val('mdm'), station: val('mst'), note: val('mnt'), singleParcel: !!$('#msingle').checked});
+  await dash(); popup('تم تسجيل الطلب ✔', `رقم الطلب: <b>${r.id}</b><br>${r.cartons || r.parcels} كرطون — ${r.parcels} طرد<br>رسوم التوصيل ${num(r.fee)} دج`);
 }
 async function addToOrder(id) {
   const items = getLines('a'); if (!items.length) return toast('اختار منتج وعدد الكراطن');
@@ -590,7 +616,7 @@ async function printLabels() {                  // يدمج بوردرو كل ا
   modal(`<h3>جاري تجهيز البوردرو…</h3><p id="lp" class="mut">0 / ${ids.length}</p>`);
   for (const id of ids) {
     try {
-      const r = await api('label', {orderId: id}, true), o = D.orders.find(x => x.id === id), src = await PDFDocument.load(Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0))), cp = Math.max(1, +o.qty);
+      const r = await api('label', {orderId: id}, true), o = D.orders.find(x => x.id === id), src = await PDFDocument.load(Uint8Array.from(atob(r.pdf), c => c.charCodeAt(0))), cp = +o.oneParcel ? 1 : Math.max(1, +o.qty);
       for (let k = 1; k <= cp; k++) for (const pg of await out.copyPages(src, src.getPageIndices())) { out.addPage(pg); if (cp > 1) pg.drawText(k + '/' + cp, {x: 8, y: pg.getHeight() - 22, size: 16, font: f}); }
       ok++;
     } catch (e) { fail.push(id); }
@@ -613,26 +639,38 @@ const ordersTable = () => {
   <td><b>${esc(o.customer)}</b><br><a class="tel" href="tel:${esc(String(o.phone).replace(/[^\d+]/g, ''))}">${ic('phone')}${esc(o.phone)}</a><br><small>📍 ${esc(wname(o.wilaya))} — ${+o.stopDesk ? 'Stop Desk ' + esc(o.station) : esc(o.commune)}<br>${+o.stopDesk ? '🏢 توصيل لمكتب Stop Desk' : '🏠 توصيل للمنزل'}${+o.weight ? ' · ' + o.weight + ' كغ' : ''}</small>${o.note ? `<br><small class="mut">📝 ${esc(o.note)}</small>` : ''}${rk(o)}${o.agent ? `<br><small class="mut">👤 ${esc(o.agentName)} · كود ${esc(o.agentCode)}</small>` : ''}</td>
   <td>${num(o.price * o.qty + +(o.fee || 0))}<br><small class="mut">منها توصيل ${num(o.fee)}</small></td>
   <td>${stSel(o)}${o.tracking ? `<br><small>${o.tracking}</small> <button class="btn s" onclick="label('${o.id}')">بوردرو${o.qty > 1 ? ' ×' + o.qty : ''}</button>` : ''}${o.status === 'cancelled' && o.cancelNote ? `<br><small>📝 ${esc(o.cancelNote)}</small>` : ''}</td>
-  <td style="white-space:nowrap">${ed ? `<button class="btn s" onclick="editOrder('${o.id}')">تعديل</button> ` : ''}<button class="btn s" onclick="showLog('${g}')">السجل</button></td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
+  <td style="white-space:nowrap">${ed ? `<button class="btn s" onclick="editOrder('${o.id}')">تعديل</button> <button class="btn s danger" onclick="deleteOrder('${o.id}')">حذف</button> ` : ''}<button class="btn s" onclick="showLog('${g}')">السجل</button></td></tr>`; }).join('') || '<tr><td colspan=6 class="mut">ما كاين حتى طلب.</td></tr>'}</table></div>`;
 };
+function editItemHtml(i, it, sid) {
+  const oldId = it.productId || '', choices = D.products.filter(p => D.prices.some(x => x.seller === sid && x.productId === p.id) || p.id === oldId);
+  if (!choices.some(p=>p.id===oldId)) choices.unshift({id:oldId,name:it.name||oldId});
+  const opts = choices.map(p=>`<option value="${p.id}" ${p.id===oldId?'selected':''}>${esc(p.name)}${p.stock<=0&&p.id!==oldId?' (نفد)':''}</option>`).join('');
+  return `<div class="row eitem" data-i="${i}"><select id="eip${i}" onchange="editItemPrice(${i},'${sid}')">${opts}</select><input id="eiq${i}" type="number" min="1" step="1" value="${+it.qty||1}" placeholder="الكراطن"><input id="eir${i}" type="number" min="1" value="${+it.price||0}" placeholder="سعر الكرطون"><button class="btn s" type="button" onclick="removeEditItem(${i})">✕</button></div>`;
+}
+function editItemPrice(i,sid) { const id=val('eip'+i), p=D.prices.find(x=>x.seller===sid&&x.productId===id); if(p) $('#eir'+i).value=p.price; }
+function addEditItem(sid) { const box=$('#eitems'), i=[...box.children].reduce((m,e)=>Math.max(m,+e.dataset.i),-1)+1, first=D.products.find(p=>D.prices.some(x=>x.seller===sid&&x.productId===p.id)); if(!first) return toast('ما كاينش منتجات متاحة'); box.insertAdjacentHTML('beforeend',editItemHtml(i,{productId:first.id,name:first.name,qty:1,price:(D.prices.find(x=>x.seller===sid&&x.productId===first.id)||{}).price},sid)); }
+function removeEditItem(i) { const e=$(`#eitems .eitem[data-i="${i}"]`); if(e) e.remove(); }
+function getEditItems() { return [...document.querySelectorAll('#eitems .eitem')].map(e=>{const i=e.dataset.i;return {productId:val('eip'+i),qty:+val('eiq'+i),price:+val('eir'+i)}}).filter(x=>x.productId&&x.qty>0&&x.price>0); }
 async function editOrder(id) {
-  const o = D.orders.find(x => x.id === id), multi = (() => { try { return JSON.parse(o.items).length > 1; } catch (e) { return false; } })();
+  const o = D.orders.find(x => x.id === id);
+  let its=[]; try { its=JSON.parse(o.items||'[]'); } catch(e) {}
+  if(!its.length) its=[{productId:o.productId,name:o.productName,qty:o.qty,price:o.price}];
   GS = isSel() ? S.slug : (D.sellers.find(s => s.id === o.seller) || {}).slug;
-  const ok = p => p.id === o.productId || D.prices.some(x => x.seller === o.seller && x.productId === p.id);
-  const opts = (D.products.some(p => p.id === o.productId) ? '' : `<option value="${o.productId}">${esc(o.productName)}</option>`) + D.products.filter(ok).map(p => `<option value="${p.id}" ${p.id === o.productId ? 'selected' : ''}>${esc(p.name)}${p.stock <= 0 && p.id !== o.productId ? ' (نفد)' : ''}</option>`).join('');
-  modal(`<h3>تعديل ${o.id}</h3>
-  <div class="row"><select id="epd" ${multi ? 'disabled' : ''} onchange="$('#epr').value=(D.prices.find(x=>x.seller==='${o.seller}'&&x.productId===this.value)||{}).price||$('#epr').value">${opts}</select><input id="epr" type="number" ${multi ? 'disabled' : ''} value="${o.price}" placeholder="سعر الكرطون"></div>
-  <div class="row"><input id="ec" value="${esc(o.customer)}" placeholder="الاسم"><input id="ep" type="tel" inputmode="tel" value="${esc(o.phone)}" placeholder="الهاتف"></div>
-  <div class="row"><select id="ed" onchange="geo('ew','ecm','ed','est')"><option value="0">توصيل للمنزل</option><option value="1" ${+o.stopDesk ? 'selected' : ''}>Stop Desk</option></select><select id="ew" onchange="geo('ew','ecm','ed','est')">${wOpts()}</select><select id="ecm"></select><select id="est" style="display:none"></select></div>
-  <div class="row"><input id="ea" value="${esc(o.address)}" placeholder="العنوان"><input id="en" value="${esc(o.note || '')}" placeholder="ملاحظة"></div>
-  ${multi ? '<p class="mut">هذا طرد قديم فيه منتجين: المنتج والسعر ما يتبدلوش (ألغِ الطلب وسجّل جديد).</p>' : ''}
-  ${['new', 'confirmed', 'pending'].includes(o.status) && D.prices.some(x => x.seller === o.seller) ? `<details><summary>➕ أضف منتجات لنفس الطلب</summary><p class="mut">كل كرطون يتسجل كطرد جديد بنفس بيانات الزبون.</p><div id="al">${lineHtml('a', 0, o.seller)}</div><button class="btn s" onclick="addLine('a','${o.seller}')">＋ منتج آخر</button> <button class="btn t s" onclick="addToOrder('${id}')">أضف للطلب</button></details>` : ''}
-  <button class="btn t" onclick="saveOrder('${id}')">حفظ</button> <button class="btn" onclick="modal()">إغلاق</button>`);
-  $('#ew').value = o.wilaya; await geo('ew', 'ecm', 'ed', 'est'); $(+o.stopDesk ? '#est' : '#ecm').value = +o.stopDesk ? o.station : o.commune;
+  const opts = its.map((it,i)=>editItemHtml(i,it,o.seller)).join('');
+  modal(`<h3>تعديل الطلب ${o.id}</h3>
+  <p class="mut">تقدر تبدّل المنتجات والكميات والأسعار ومعلومات الزبون. المخزون يتحدث تلقائياً بعد الحفظ.</p>
+  <div id="eitems">${opts}</div><button class="btn s" onclick="addEditItem('${o.seller}')">＋ أضف منتج</button>
+  <div class="row"><input id="ec" value="${esc(o.customer)}" placeholder="اسم الزبون"><input id="ep" type="tel" inputmode="tel" value="${esc(o.phone)}" placeholder="الهاتف"></div>
+  <label style="display:flex;align-items:center;gap:9px;margin:10px 2px;padding:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px"><input id="esingle" type="checkbox" ${+o.oneParcel?'checked':''} style="width:20px;height:20px"><span><b>كل زوج كراطن في طرد واحد</b><small class="mut" style="display:block">يمكن تغييرها قبل إنشاء بوردرو Noest فقط</small></span></label>
+  <div class="row"><select id="ed" onchange="geo('ew','ecm','ed','est')"><option value="0">توصيل للمنزل</option><option value="1" ${+o.stopDesk?'selected':''}>Stop Desk</option></select><select id="ew" onchange="geo('ew','ecm','ed','est')">${wOpts()}</select><select id="ecm"></select><select id="est" style="display:none"></select></div>
+  <div class="row"><input id="ea" value="${esc(o.address)}" placeholder="العنوان"><input id="en" value="${esc(o.note||'')}" placeholder="ملاحظة"></div>
+  <button class="btn t" onclick="saveOrder('${id}')">حفظ التعديلات</button> <button class="btn" onclick="modal()">إغلاق</button>`);
+  $('#ew').value=o.wilaya; await geo('ew','ecm','ed','est'); $(+o.stopDesk?'#est':'#ecm').value=+o.stopDesk?o.station:o.commune;
 }
 async function saveOrder(id) {
-  await api('editOrder', {orderId: id, customer: val('ec'), phone: dzPhone(val('ep')) || val('ep'), productId: val('epd'), price: val('epr'), stopDesk: val('ed'), wilaya: val('ew'), commune: val('ecm'), station: val('est'), address: val('ea'), note: val('en')});
-  modal(); toast('تم التعديل ✔'); dash();
+  const items=getEditItems(); if(!items.length) return toast('لازم تضيف منتج واحد على الأقل مع الكمية والسعر');
+  await api('editOrder',{orderId:id,items,customer:val('ec'),phone:dzPhone(val('ep'))||val('ep'),stopDesk:val('ed'),wilaya:val('ew'),commune:val('ecm'),station:val('est'),address:val('ea'),note:val('en'),singleParcel:!!$('#esingle').checked});
+  modal(); toast('تم تعديل الطلب وتحديث المخزون ✔'); await dash();
 }
 function cancelOrder(id) {
   modal(`<h3>إلغاء الطلب ${esc(id)}</h3><p class="mut">الكراطن ترجع للمخزون وما تتحسبش على البائع. الطلب يبقى ظاهر في القائمة وفي الحساب مع المورد (ملغى قبل البعث).</p><div class="row"><input id="cn" placeholder="سبب الإلغاء (إجباري)"></div><button class="btn t" onclick="doCancel('${id}')">تأكيد الإلغاء</button> <button class="btn" onclick="modal()">رجوع</button>`);
@@ -641,39 +679,33 @@ async function doCancel(id) {
   const note = val('cn').trim(); if (!note) return toast('اكتب سبب الإلغاء');
   await api('cancelOrder', {orderId: id, note}); await dash(); toast('تم الإلغاء ✔');
 }
+async function deleteOrder(id) {
+  if (!confirm('حذف الطلب نهائياً؟ سيتم حذف جميع طرود نفس الطلب وإرجاع الكراطن للمخزون. هذا متاح فقط قبل تأكيد الطرود في Noest.')) return;
+  await api('deleteOrder', {orderId:id}); await dash(); toast('تم حذف الطلب وإرجاع المخزون ✔');
+}
 async function reopen(id) { if (confirm('إعادة الطلب إلى «جديد (بانتظار تأكيد البائع)»؟ الكراطن تتخصم من المخزون من جديد.')) await act('reopenOrder', {orderId: id}); }
-function posSaleDebtLocal(s,P){const paid=(P.payments||[]).filter(x=>x.saleId===s.id).reduce((a,x)=>a+(+x.amount||0),0),ret=(P.returns||[]).filter(x=>x.saleId===s.id).reduce((a,x)=>a+(+x.amount||0),0);return Math.max(0,+s.total-(+s.paid||0)-paid-ret);}
-async function posOpenCash(){const amount=+val('posOpening');if(amount<0||!Number.isFinite(amount))return toast('أدخل رصيداً صحيحاً');await api('posOpen',{amount});await dash();}
-async function posCashMove(type){const amount=+val('posCashAmount'),note=val('posCashNote');await api(type==='add'?'posAddCash':'posRemoveCash',{amount,note});await dash();}
-async function posSavePrice(id){await api('posSavePrice',{productId:id,price:+val('posPrice_'+id)});await dash();toast('تم حفظ سعر البيع');}
-function posAddCart(id){const p=D.products.find(x=>x.id===id),qty=Math.floor(+val('posQty_'+id)),price=+val('posPrice_'+id);if(!p||qty<1||price<=0)return toast('أدخل الكمية والسعر الصحيحين');const max=Math.floor((+p.stock||0)*(+p.pairs||0)),old=POS_CART.filter(x=>x.productId===id).reduce((a,x)=>a+x.qty,0);if(old+qty>max)return toast('الكمية تتجاوز المخزون المتاح');const row=POS_CART.find(x=>x.productId===id);if(row){row.qty+=qty;row.price=price;}else POS_CART.push({productId:id,name:p.name,qty,price});paint();}
-function posRemoveCart(i){POS_CART.splice(i,1);paint();}
-async function posCheckout(){if(!POS_CART.length)return toast('السلة فارغة');const name=val('posCustomerName'),phone=val('posCustomerPhone'),paidRaw=val('posPaid'),total=POS_CART.reduce((a,x)=>a+x.qty*x.price,0),paid=paidRaw===''?total:+paidRaw;const r=await api('posSale',{items:POS_CART,customerName:name,phone,address:val('posCustomerAddress'),paid});POS_CART=[];await dash();posReceipt(r.id);}
-async function posAddCustomer(){const name=val('posNewCustName');if(!name.trim())return toast('اسم الزبون مطلوب');await api('posSaveCustomer',{name,phone:val('posNewCustPhone'),address:val('posNewCustAddress'),notes:val('posNewCustNotes')});await dash();toast('تم حفظ الزبون');}
-function posCustomerHistory(id){const P=D.pos,c=P.customers.find(x=>x.id===id),sales=P.sales.filter(x=>x.customerId===id);modal(`<h3>كشف حساب: ${esc(c?c.name:'الزبون')}</h3><p class="mut">الهاتف: ${esc(c&&c.phone||'')}</p><div class="tw"><table><tr><th>الفاتورة</th><th>التاريخ</th><th>المجموع</th><th>الدين الحالي</th></tr>${sales.map(s=>`<tr><td>${esc(s.id)}</td><td>${fd(s.date)}</td><td>${num(s.total)} دج</td><td>${num(posSaleDebtLocal(s,P))} دج</td></tr>`).join('')||'<tr><td colspan=4>لا توجد مشتريات</td></tr>'}</table></div><button class="btn t" onclick="modal()">إغلاق</button>`,true);}
-async function posPayDebt(id,debt){const a=prompt('المبلغ النقدي لتسديد الدين (المتبقي '+debt+' دج):',String(debt));if(a===null)return;await api('posPayDebt',{customerId:id,amount:+a});await dash();}
-function posPrint(id){const s=(D.pos.sales||[]).find(x=>x.id===id);if(!s)return;let items=[];try{items=JSON.parse(s.items||'[]')}catch(e){};const P=D.pos,paid=(P.payments||[]).filter(x=>x.saleId===id).reduce((a,x)=>a+(+x.amount||0),0),ret=(P.returns||[]).filter(x=>x.saleId===id).reduce((a,x)=>a+(+x.amount||0),0),debt=Math.max(0,+s.total-(+s.paid||0)-paid-ret);const w=window.open('','_blank');if(!w)return toast('اسمح بالنوافذ المنبثقة لطباعة الفاتورة');w.document.write(`<html dir="rtl"><meta charset="utf-8"><title>فاتورة ${esc(id)}</title><body style="font-family:Tahoma;padding:24px"><h2>فاتورة بيع — POS المحل</h2><p>رقم الفاتورة: ${esc(id)}<br>التاريخ: ${new Date(s.date).toLocaleString('fr-DZ')}<br>الزبون: ${esc(s.customerName)}<br>الهاتف: ${esc(s.phone||'')}</p><table width="100%" border="1" cellspacing="0" cellpadding="8"><tr><th>المنتج</th><th>الكمية</th><th>سعر الزوج</th><th>المجموع</th></tr>${items.map(x=>`<tr><td>${esc(x.name)}</td><td>${x.qty}</td><td>${num(x.price)}</td><td>${num(x.total)}</td></tr>`).join('')}</table><h3>المجموع: ${num(s.total)} دج</h3><p>المدفوع أولاً: ${num(s.paid)} دج<br>تسديدات لاحقة: ${num(paid)} دج<br>المرتجعات: ${num(ret)} دج<br><b>الدين المتبقي: ${num(debt)} دج</b></p><p>حررت بواسطة: ${esc(s.by||'')}</p><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close();}
-function posReceipt(id){posPrint(id);}
-function posReturn(id){const s=(D.pos.sales||[]).find(x=>x.id===id);if(!s)return;let items=[];try{items=JSON.parse(s.items||'[]')}catch(e){};modal(`<h3>إرجاع من الفاتورة ${esc(id)}</h3><p class="mut">حدد المنتج والكمية. إذا كانت السلعة صالحة للبيع اختر إعادة للمخزون.</p><select id="posRetProduct">${items.map(x=>`<option value="${x.productId}">${esc(x.name)} — ${x.qty} مباعة</option>`).join('')}</select><input id="posRetQty" type="number" min="1" value="1"><label><input id="posRetStock" type="checkbox" checked style="width:auto"> السلعة صالحة وإرجاعها للمخزون</label><button class="btn t" onclick="posSubmitReturn('${id}')">تأكيد الإرجاع</button> <button class="btn" onclick="modal()">إلغاء</button>`);}
-async function posSubmitReturn(id){const productId=val('posRetProduct'),qty=+val('posRetQty'),restock=$('#posRetStock').checked;await api('posReturn',{saleId:id,items:[{productId,qty}],restock});modal();await dash();toast('تم تسجيل الإرجاع');}
+function noestAccountView() {
+  const os = D.orders.filter(o => ['pending','shipped','delivered','returned'].includes(o.status));
+  const goods = o => (+o.price||0) * (+o.qty||0);
+  const sent = os.reduce((n,o)=>n+goods(o),0);
+  const delivered = os.filter(o=>o.status==='delivered').reduce((n,o)=>n+goods(o),0);
+  const waiting = os.filter(o=>['pending','shipped','returned'].includes(o.status)).reduce((n,o)=>n+goods(o),0);
+  const expected = os.filter(o=>o.status==='delivered').reduce((n,o)=>n+goods(o)+(+o.fee||0),0);
+  const payments = (D.noestPayments||[]).reduce((n,p)=>n+(+p.amount||0),0);
+  const balance = expected-payments;
+  return sec('حسابك مع Noest Express','قيمة السلع حسب حالات الطرود',`<button class="btn s" onclick="act('syncNow')">تحديث الحالات من Noest</button>`+kcards([
+    ['قيمة السلع المرسلة',num(sent)+' دج','box','لا تشمل مصاريف التوصيل'],
+    ['قيمة السلع المستلمة',num(delivered)+' دج','check','الطرود بحالة تم التسليم'],
+    ['قيمة السلع غير المستلمة',num(waiting)+' دج','clock','في الطريق أو راجعة أو لم تؤكد بعد'],
+    ['الأموال المستلمة منك من Noest',num(payments)+' دج','cash','حسب الدفعات التي سجلتها'],
+    ['المتبقي المتوقع',num(balance)+' دج','wallet','قيمة الطرود المسلّمة مع التوصيل − الدفعات المسجلة']
+  ])) + `<div class="card"><h3>تسجيل دفعة استلمتها من Noest</h3><p class="mut">سجّل كل تحويل أو سحب وصل لحسابك فعلياً، باش يبقى الرصيد مضبوط.</p><div class="row"><input id="npamt" type="number" min="1" placeholder="المبلغ بالدينار"><input id="npdate" type="date"><input id="npref" placeholder="مرجع التحويل (اختياري)"></div><div class="row"><input id="npnote" placeholder="ملاحظة (اختياري)"></div><button class="btn t" onclick="addNoestPayment()">تسجيل الدفعة</button></div>`
+  + `<div class="card tw"><h3>سجل دفعات Noest</h3><table><tr><th>التاريخ</th><th>المرجع</th><th>ملاحظة</th><th>المبلغ</th><th></th></tr>${(D.noestPayments||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(x=>`<tr><td>${fd(x.date)}</td><td>${esc(x.reference||'—')}</td><td>${esc(x.note||'')}</td><td><b>${num(x.amount)} دج</b></td><td><button class="btn s" onclick="delNoestPayment('${x.id}')">حذف</button></td></tr>`).join('')||'<tr><td colspan=5 class="mut">ما سجلتش دفعات حتى الآن.</td></tr>'}</table><p class="mut">ملاحظة: الرصيد المتبقي تقديري قبل خصم رسوم التوصيل أو الإرجاع أو أي تسويات تخصمها Noest. قيمة السلع غير المستلمة لا تدخل في الرصيد المنتظر حتى تتسلم.</p></div>`;
+}
+async function addNoestPayment() { await api('addNoestPayment',{amount:val('npamt'),date:val('npdate'),reference:val('npref'),note:val('npnote')}); await dash(); toast('تم تسجيل دفعة Noest ✔'); }
+async function delNoestPayment(id) { if(!confirm('حذف تسجيل هذه الدفعة؟')) return; await api('delNoestPayment',{id}); await dash(); }
 
 const V = {
-  pos() {
-    const P=D.pos||{customers:[],sales:[],payments:[],cashLog:[],returns:[],prices:[],products:[],cashOpened:false};
-    if(!P.cashOpened) return `<div class="card"><h2>فتح صندوق المحل</h2><p class="mut">سجّل المبلغ النقدي الموجود في الصندوق عند بداية الاستخدام. الافتتاحية تُسجّل مرة واحدة فقط ولا يمكن تكرارها.</p><div class="row"><input id="posOpening" type="number" min="0" step="0.01" placeholder="الرصيد الافتتاحي بالدينار"></div><button class="btn t" onclick="posOpenCash()">فتح الصندوق</button></div>`;
-    const balance=(P.cashLog||[]).reduce((a,x)=>a+(['remove','refund'].includes(x.type)?-1:1)*(+x.amount||0),0), sales=(P.sales||[]), totalSales=sales.reduce((a,x)=>a+(+x.total||0),0), paidSales=sales.reduce((a,x)=>a+(+x.paid||0),0);
-    const custDebt=c=>sales.filter(s=>s.customerId===c.id).reduce((a,s)=>a+posSaleDebtLocal(s,P),0);
-    return `<h2>نقطة البيع — POS المحل</h2><div class="kg">${[['رصيد الصندوق',num(balance)+' دج'],['إجمالي المبيعات',num(totalSales)+' دج'],['المقبوض نقداً',num(paidSales)+' دج'],['عدد العمليات',sales.length]].map(x=>`<div class="kc"><div class="b"><div class="t"><small>${x[0]}</small><strong>${x[1]}</strong></div></div></div>`).join('')}</div>
-    <div class="card"><h3>حركة الصندوق</h3><div class="row"><input id="posCashAmount" type="number" min="0.01" step="0.01" placeholder="المبلغ"><input id="posCashNote" placeholder="السبب / الملاحظة"></div><button class="btn t" onclick="posCashMove('add')">＋ إضافة مال</button> <button class="btn" onclick="posCashMove('remove')">− سحب مال</button></div>
-    <div class="card"><h3>بيع جديد</h3><p class="mut">المخزون يُخصم من نفس مخزون المنتجات. الكمية هنا بالأزواج، وسعر البيع للزوج الواحد.</p><div class="pg">${D.products.filter(p=>+p.stock>0).map(p=>{const pr=(P.prices||[]).find(x=>x.productId===p.id);return `<div class="card"><b>${esc(p.name)}</b><small class="mut">المتاح: ${Math.floor((+p.stock||0)*(+p.pairs||0))} زوج</small><div class="row"><input id="posPrice_${p.id}" type="number" min="0.01" step="0.01" value="${pr?pr.price:''}" placeholder="سعر الزوج" ${S.role==='admin'?'':'readonly'}><input id="posQty_${p.id}" type="number" min="1" step="1" value="1" placeholder="الكمية"></div><button class="btn s" onclick="posAddCart('${p.id}')">أضف للسلة</button>${S.role==='admin'?`<button class="btn s" onclick="posSavePrice('${p.id}')">حفظ السعر</button>`:''}</div>`}).join('')||'<p class="mut">لا توجد منتجات متوفرة.</p>'}</div>
-    <h3>السلة</h3><div class="tw"><table><tr><th>المنتج</th><th>الكمية</th><th>السعر/زوج</th><th>المجموع</th><th></th></tr>${POS_CART.map((x,i)=>`<tr><td>${esc(x.name)}</td><td>${x.qty}</td><td>${num(x.price)}</td><td>${num(x.qty*x.price)}</td><td><button class="btn s" onclick="posRemoveCart(${i})">حذف</button></td></tr>`).join('')||'<tr><td colspan="5">السلة فارغة</td></tr>'}</table></div>
-    <div class="row"><input id="posCustomerName" placeholder="اسم الزبون (إجباري للبيع بالدين)"><input id="posCustomerPhone" placeholder="رقم الهاتف"><input id="posCustomerAddress" placeholder="العنوان"></div><div class="row"><input id="posPaid" type="number" min="0" step="0.01" placeholder="المبلغ المدفوع نقداً (اتركه فارغاً للدفع الكامل)"></div><button class="btn t" onclick="posCheckout()">تأكيد البيع وطباعة الفاتورة</button>
-    <div class="card"><h3>إضافة زبون</h3><div class="row"><input id="posNewCustName" placeholder="اسم الزبون"><input id="posNewCustPhone" placeholder="الهاتف"><input id="posNewCustAddress" placeholder="العنوان"></div><input id="posNewCustNotes" placeholder="ملاحظات"><button class="btn" onclick="posAddCustomer()">حفظ الزبون</button></div>
-    <div class="card"><h3>الزبائن والديون</h3><div class="tw"><table><tr><th>الزبون</th><th>الهاتف</th><th>الدين المتبقي</th><th></th></tr>${P.customers.map(c=>{const d=custDebt(c);return `<tr><td>${esc(c.name)}</td><td>${esc(c.phone||'')}</td><td><b>${num(d)} دج</b></td><td><button class="btn s" onclick="posCustomerHistory('${c.id}')">كشف الحساب</button> ${d>0?`<button class="btn s" onclick="posPayDebt('${c.id}',${d})">تسديد دين</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="4">لا يوجد زبائن مسجلون بعد.</td></tr>'}</table></div></div>
-    <div class="card"><h3>آخر المبيعات والفواتير</h3><div class="tw"><table><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>الزبون</th><th>المجموع</th><th>المدفوع</th><th>الباقي</th><th>بواسطة</th><th>العمليات</th></tr>${sales.slice().reverse().slice(0,100).map(s=>`<tr><td>${esc(s.id)}</td><td>${fd(s.date)}</td><td>${esc(s.customerName)}</td><td>${num(s.total)}</td><td>${num(s.paid)}</td><td>${num(posSaleDebtLocal(s,P))}</td><td>${esc(s.by||'')}</td><td><button class="btn s" onclick="posPrint('${s.id}')">فاتورة</button> <button class="btn s" onclick="posReturn('${s.id}')">إرجاع</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد مبيعات.</td></tr>'}</table></div></div>
-    <div class="card"><h3>سجل الإرجاعات</h3><div class="tw"><table><tr><th>التاريخ</th><th>الفاتورة</th><th>المبلغ</th><th>إعادة للمخزون</th><th>استرجاع نقدي</th><th>بواسطة</th></tr>${(P.returns||[]).slice().reverse().map(r=>`<tr><td>${fd(r.date)}</td><td>${esc(r.saleId)}</td><td>${num(r.amount)} دج</td><td>${r.restocked==='yes'?'نعم':'لا'}</td><td>${num(r.cashRefund||0)} دج</td><td>${esc(r.by||'')}</td></tr>`).join('')||'<tr><td colspan="6">لا توجد إرجاعات.</td></tr>'}</table></div></div>
-    <div class="card"><h3>سجل الصندوق</h3><div class="tw"><table><tr><th>التاريخ</th><th>العملية</th><th>المبلغ</th><th>التفاصيل</th><th>بواسطة</th></tr>${(P.cashLog||[]).slice().reverse().map(x=>`<tr><td>${new Date(x.date).toLocaleString('fr-DZ')}</td><td>${({opening:'افتتاح',add:'إضافة',remove:'سحب',sale:'بيع',payment:'تسديد دين',refund:'استرجاع نقدي'})[x.type]||x.type}</td><td>${num(x.amount)} دج</td><td>${esc(x.note||'')}</td><td>${esc(x.by||'')}</td></tr>`).join('')}</table></div></div>`;
-  },
   orders() {
     const manual = isSel() ? '<button class="btn t" style="margin:0 0 10px 8px" onclick="newOrder()">＋ طلب جديد</button>' : '';
     return manual + (S.role === 'agent' ? '' : `<button class="btn s" style="margin-bottom:10px" onclick="toast('كنحدّث من Noest…');act('syncNow')">حدّث الحالات من Noest</button>`) + ordersTable();
@@ -727,7 +759,7 @@ const V = {
       + sec('الأرباح', 'حسب الفترة المختارة', kpis(c, p, ['profit', 'eprofit', 'sales', 'cost', 'exp', 'rf', 'open']))
       + sec('حسابي مع المورد', 'من لحظة تسجيل الطلب — كل الفترات', kcards([['بضاعة مسجلة', num(l.taken) + ' دج', 'box', l.takenQ + ' كرطون'], ['ملغى قبل البعث', num(l.canc) + ' دج', 'x', l.cancQ + ' كرطون — غير محسوبة'], ['معادة بعد الإرسال', num(l.back) + ' دج', 'undo', l.backQ + ' كرطون — منقوصة'], ['دفعاتك للمورد', num(l.paid) + ' دج', 'cash', ''], ['الدين الحالي', num(l.debt) + ' دج', 'wallet', l.debt > 0 ? 'عليك للمورد' : l.debt < 0 ? 'فائض لك' : 'مسدّد ✔']]))
       + `<div class="card"><h3>حقوق الاسترجاع</h3><select id="pl" onchange="act('setPlan',{plan:val('pl')})"><option value="per" ${D.plan === 'per' ? 'selected' : ''}>على كل طرد راجع (حسب سعر Noest)</option><option value="sub" ${D.plan === 'sub' ? 'selected' : ''}>اشتراك ${num(SUB_FEE)} دج في الشهر</option></select>
-      <p class="mut"><b>الربح</b> = ربح الطرود المسلّمة − كل المصاريف (المصاريف المسجلة + حقوق الاسترجاع).<br><b>الربح المتوقع</b> = ربح الطرود المسلّمة + ربح الطرود المبعوثة (في الطريق) − نفس المصاريف.<br>ربح الطرد = (سعر بيعك − سعر الجملة) × عدد الكراطن.</p></div>`;
+      <p class="mut"><b>الربح</b> = ربح الطرود المسلّمة − كل المصاريف (المصاريف المسجلة + حقوق الاسترجاع).<br><b>الربح المتوقع</b> = ربح الطرود المسلّمة + ربح الطرود المبعوثة (في الطريق) − نفس المصاريف.<br>ربح الطرد = (سعر بيعك − سعر الجملة) × عدد الكراطن.</p></div>` + noestAccountView();
   },
   exp() {
     return `<div class="card"><h3>مصروف جديد</h3><div class="row"><input id="el" placeholder="الوصف (إعلانات، نقل…)"><input id="ea" type="number" placeholder="المبلغ دج"></div><button class="btn" onclick="act('addExpense',{label:val('el'),amount:val('ea')})">زيد</button></div>
@@ -735,7 +767,7 @@ const V = {
   },
   stock() {
     const adm = S.role === 'admin', opt = (v, t) => `<option value="${v}" ${SF === v ? 'selected' : ''}>${t}</option>`;
-    return `<div class="card pb"><input placeholder="🔍 بحث عن منتج…" value="${esc(SQ)}" oninput="SQ=this.value;stockFilter()"><select onchange="SF=this.value;stockFilter()">${adm ? opt('', 'كل المنتجات') + opt('out', 'نفد') + opt('low', 'قليل (3 أو أقل)') + opt('hid', 'مخفي عن البائعين') + opt('nobuy', 'بلا سعر شراء') : opt('', 'كل المنتجات') + opt('in', 'متوفر') + opt('out', 'نفد') + opt('hid', 'مخفي من متجري') + opt('noprice', 'بلا سعر بيع')}</select>${adm ? '<button class="btn t" onclick="editProduct(\'new\')">＋ منتج جديد</button>' : ''}</div>
+    return `${adm ? categoryManager() : ''}<div class="card pb"><input id="stockSearch" type="search" placeholder="🔍 بحث عن منتج…" value="${esc(SQ)}" oninput="SQ=this.value;stockFilter()"><select onchange="SF=this.value;stockFilter()">${adm ? opt('', 'كل المنتجات') + opt('out', 'نفد') + opt('low', 'قليل (3 أو أقل)') + opt('hid', 'مخفي عن البائعين') + opt('nobuy', 'بلا سعر شراء') : opt('', 'كل المنتجات') + opt('in', 'متوفر') + opt('out', 'نفد') + opt('hid', 'مخفي من متجري') + opt('noprice', 'بلا سعر بيع')}</select>${adm ? '<button class="btn t" onclick="editProduct(\'new\')">＋ منتج جديد</button>' : ''}</div>
     <p class="mut hint">${adm ? 'عدّل الستوك مباشرة بالأزرار + و −، وأخفِ/أظهر المنتج بالمفتاح. زر «تعديل» يفتح الصور والأسعار وأسعار كل بائع.' : 'اكتب سعر بيعك للزوج: يتحفظ تلقائيا ويظهر ربحك في الكرطون (أخضر/أحمر). فعّل «ظاهر في متجري» لإظهار المنتج لزبائنك.'}</p>
     <div class="plist" id="plist">${stockRows()}</div>`;
   },
